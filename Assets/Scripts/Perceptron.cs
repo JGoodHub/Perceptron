@@ -9,14 +9,16 @@ public class Perceptron
 {
     private List<Layer> _layers;
     private Random _random;
-
+    
     public Layer InputLayer => _layers[0];
 
     public Layer OutputLayer => _layers[_layers.Count - 1];
 
-    public Perceptron(List<int> neuronsPerLayer, int seed = -1)
+    public Perceptron(List<int> neuronsPerLayer, Random random = null)
     {
-        _random = new Random(seed == -1 ? DateTime.Now.GetHashCode() : seed);
+        _random = random;
+        _random ??= new Random(DateTime.Now.GetHashCode());
+
         _layers = new List<Layer>();
 
         for (int i = 0; i < neuronsPerLayer.Count; i++)
@@ -43,10 +45,70 @@ public class Perceptron
         return outputActivations;
     }
 
+    public int GetMaxOutputActivationIndex(out float activation)
+    {
+        List<float> outputActivations = GetOutputActivations();
+
+        int maxIndex = 0;
+        activation = float.MinValue;
+
+        for (int i = 0; i < outputActivations.Count; i++)
+        {
+            if (activation < outputActivations[i])
+            {
+                maxIndex = i;
+                activation = outputActivations[i];
+            }
+        }
+
+        return maxIndex;
+    }
+
     public void ProcessInputActivations()
     {
         for (int i = 1; i < _layers.Count - 1; i++)
             _layers[i].ComputeActivations();
+    }
+
+    public void ApplyRandomWeightAndBiasMutations(float mutationsRange)
+    {
+        for (int i = 1; i < _layers.Count - 1; i++)
+            _layers[i].ApplyRandomWeightAndBiasMutations(_random, mutationsRange);
+    }
+
+    public static float Sigmoid(float input)
+    {
+        return (float)(1f / (1f + Math.Exp(-input)));
+    }
+
+    public static float Relu(float input)
+    {
+        return input <= 0f ? 0f : input;
+    }
+
+    public static float RandomFloat(Random random, float min, float max)
+    {
+        return (float)(max * random.NextDouble() - min);
+    }
+    
+    public Perceptron Clone()
+    {
+        List<int> neuronsPerLayer = new List<int>();
+
+        foreach (Layer layer in _layers)
+            neuronsPerLayer.Add(layer.Neurons.Count);
+
+        Perceptron clone = new Perceptron(neuronsPerLayer, new Random());
+
+        for (int l = 0; l < _layers.Count; l++)
+        {
+            for (int n = 0; n < _layers[l].Neurons.Count; n++)
+            {
+                clone._layers[l].Neurons[n].CloneWeightsAndBias(_layers[l].Neurons[n]);
+            }
+        }
+        
+        return clone;
     }
 }
 
@@ -75,6 +137,14 @@ public class Layer
         foreach (Neuron neuron in _neurons)
             neuron.ComputeActivation();
     }
+
+    public void ApplyRandomWeightAndBiasMutations(Random random, float mutationsRange)
+    {
+        foreach (Neuron neuron in _neurons)
+        {
+            neuron.ApplyRandomWeightAndBiasMutations(random, mutationsRange);
+        }
+    }
 }
 
 
@@ -100,10 +170,10 @@ public class Neuron
 
         _inputNeurons = inputNeurons;
         _weights = new List<float>();
-        _bias = RandomFloat(random, -5, 5);
+        _bias = Perceptron.RandomFloat(random, -5, 5);
 
         for (int i = 0; i < _inputNeurons.Count; i++)
-            _weights.Add(RandomFloat(random, -5, 5));
+            _weights.Add(Perceptron.RandomFloat(random, -5, 5));
     }
 
     public float ComputeActivation()
@@ -114,23 +184,27 @@ public class Neuron
             _activation += _inputNeurons[i].Activation * _weights[i];
 
         _activation += _bias;
-        _activation = Relu(_activation);
+        _activation = Perceptron.Relu(_activation);
 
         return _activation;
     }
 
-    public static float Sigmoid(float input)
+    public void CloneWeightsAndBias(Neuron other)
     {
-        return (float)(1f / (1f + Math.Exp(-input)));
+        _weights.Clear();
+        foreach (float otherWeight in other._weights)
+        {
+            _weights.Add(otherWeight);
+        }
+        
+        _bias = other._bias;
     }
 
-    public static float Relu(float input)
+    public void ApplyRandomWeightAndBiasMutations(Random random, float mutationRange)
     {
-        return input <= 0f ? 0f : input;
-    }
+        for (int i = 0; i < _inputNeurons.Count; i++)
+            _weights[i] += Perceptron.RandomFloat(random, -mutationRange, mutationRange);
 
-    public static float RandomFloat(Random random, float min, float max)
-    {
-        return (float)(max * random.NextDouble() - min);
+        _bias = Perceptron.RandomFloat(random, -mutationRange, mutationRange);
     }
 }

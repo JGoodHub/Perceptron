@@ -11,9 +11,10 @@ GameObject:
   - component: {fileID: 331614762967316087}
   - component: {fileID: 331614762967316084}
   - component: {fileID: 331614762967316085}
-  m_Layer: 0
+  - component: {fileID: -3490446664688855614}
+  m_Layer: 6
   m_Name: CarAgent
-  m_TagString: Untagged
+  m_TagString: Agent
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -41,10 +42,10 @@ CapsuleCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 331614762967316086}
-  m_Enabled: 0
+  m_Enabled: 1
   m_Density: 1
   m_Material: {fileID: 0}
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: -0.0029304028}
@@ -63,16 +64,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _viewRays:
-  - Angle: -60
-    MaxDistance: 1.2
-  - Angle: -24
+  - Angle: -70
     MaxDistance: 2
-  - Angle: 0
+  - Angle: -30
     MaxDistance: 3
-  - Angle: 24
+  - Angle: 0
+    MaxDistance: 4
+  - Angle: 30
+    MaxDistance: 3
+  - Angle: 70
     MaxDistance: 2
-  - Angle: 60
-    MaxDistance: 1.2
   _accelerationCurve:
     serializedVersion: 2
     m_Curve:
@@ -98,9 +99,29 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   _maxAcceleration: 1
-  _maxSpeed: 5
-  _maxSteering: 0.4
-  _playerControlled: 0
+  _maxSpeed: 2.25
+  _maxSteering: 50
+--- !u!50 &-3490446664688855614
+Rigidbody2D:
+  serializedVersion: 4
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 331614762967316086}
+  m_BodyType: 1
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDrag: 0
+  m_AngularDrag: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
 --- !u!1 &331614763274343999
 GameObject:
   m_ObjectHideFlags: 0
@@ -111,8 +132,9 @@ GameObject:
   m_Component:
   - component: {fileID: 331614763274343996}
   - component: {fileID: 331614763274343997}
-  m_Layer: 0
-  m_Name: car_blue_5
+  - component: {fileID: 8724288340871443671}
+  m_Layer: 6
+  m_Name: CarSprite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -185,3 +207,22 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &8724288340871443671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 331614763274343999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1635a083f90c438b94af2fe759951ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _targetImage: {fileID: 331614763274343997}
+  _sourceSprites:
+  - {fileID: 21300000, guid: 9e77e6c6171fa084d93651d8f6ceeb06, type: 3}
+  - {fileID: 21300000, guid: d441f7bb5be13044f84724fa7d982e2c, type: 3}
+  - {fileID: 21300000, guid: a004a2d317aadea4cad7ed207649087b, type: 3}
+  - {fileID: 21300000, guid: 2b252333ae4267846829c5b0f6dce959, type: 3}
+  - {fileID: 21300000, guid: ea2d13aea23115449aff13e9a8be6753, type: 3}

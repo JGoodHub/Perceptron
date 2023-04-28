@@ -19,9 +19,7 @@ public class CarAgent : MonoBehaviour
     [SerializeField] private AnimationCurve _accelerationCurve;
     [SerializeField] private float _maxAcceleration;
     [SerializeField] private float _maxSpeed;
-
     [SerializeField] private float _maxSteering;
-    [SerializeField] private bool _playerControlled;
 
     private float _throttleInput;
     private float _steeringInput;
@@ -29,13 +27,28 @@ public class CarAgent : MonoBehaviour
     private float _currentSpeed;
     private float _currentTurning;
 
-    private Vector2 _lastFramePosition;
-    
-    private void Start()
+    private bool _crashed;
+    private float _timeAlive;
+    private float _toSlowCountdown = 2f;
+
+    public float SpeedNormalised => _currentSpeed / _maxSpeed;
+
+    public float SteeringInput => _steeringInput;
+
+    public bool Crashed => _crashed;
+
+    public float TimeAlive => _timeAlive;
+
+
+    public void ResetAgent()
     {
-        _lastFramePosition = transform.position;
+        _timeAlive = 0f;
+        _crashed = false;
+        _steeringInput = 0;
+        _throttleInput = 0;
+        _toSlowCountdown = 2f;
     }
-    
+
     public void SetThrottle(float throttle)
     {
         _throttleInput = throttle;
@@ -46,30 +59,62 @@ public class CarAgent : MonoBehaviour
         _steeringInput = steering;
     }
 
-    private void Update()
+    public List<float> GetViewRayDistances()
     {
-        if (_playerControlled)
+        List<float> distances = new List<float>();
+
+        foreach (ViewRay viewRay in _viewRays)
         {
-            SetThrottle(Input.GetAxis("Vertical"));
-            SetSteering(Input.GetAxis("Horizontal"));
+            Vector3 viewRayDirection = Quaternion.Euler(0, 0, -viewRay.Angle) * transform.up;
+
+            float contactDistanceNormalised = 1f;
+
+            int layerMask = ~LayerMask.GetMask("Agents");
+            RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance, layerMask);
+
+            if (raycastHit.collider != null)
+                contactDistanceNormalised = raycastHit.distance / viewRay.MaxDistance;
+
+            distances.Add(contactDistanceNormalised);
         }
 
-        Vector2 position2D = transform.position;
+        return distances;
+    }
 
-        _currentSpeed = (position2D - _lastFramePosition).magnitude / Time.deltaTime;
+    public void UpdateWithTime(float deltaTime)
+    {
         float accelerationAtSpeed = _accelerationCurve.Evaluate(_currentSpeed / _maxSpeed);
         _currentSpeed += _throttleInput * (_maxAcceleration * accelerationAtSpeed);
 
         if (_throttleInput <= 0)
-            _currentSpeed -= _maxSpeed * Time.deltaTime;
-        
+            _currentSpeed -= _maxSpeed * deltaTime;
+
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0, _maxSpeed);
 
-        _currentTurning = _maxSteering * _steeringInput;
-        transform.Rotate(Vector3.forward, _currentTurning * -1f);
+        _currentTurning = _maxSteering * ((_steeringInput - 0.5f) * 2f);
+        transform.Rotate(Vector3.forward, _currentTurning * -1f * deltaTime);
 
-        _lastFramePosition = transform.position;
-        transform.position += transform.up * (_currentSpeed * Time.deltaTime);
+        transform.position += transform.up * (_currentSpeed * deltaTime);
+
+        _timeAlive += deltaTime;
+
+        if (_currentSpeed < 0.4f)
+            _toSlowCountdown -= deltaTime;
+        else
+            _toSlowCountdown = 2f;
+
+        if (TrackCircuit.Instance.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
+        {
+            _crashed = true;
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (CompareTag(other.tag) == true)
+            return;
+
+        _crashed = true;
     }
 
     private void OnDrawGizmos()
@@ -81,8 +126,10 @@ public class CarAgent : MonoBehaviour
             Vector3 viewRayDirection = Quaternion.Euler(0, 0, -viewRay.Angle) * transform.up;
             float contactDistance = viewRay.MaxDistance;
 
-            RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance);
-            if (raycastHit.distance > 0)
+            int layerMask = ~LayerMask.GetMask("Agents");
+            RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance, layerMask);
+            
+            if (raycastHit.collider != null)
             {
                 contactDistance = raycastHit.distance;
                 Gizmos.color = Color.red;

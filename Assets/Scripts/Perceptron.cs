@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace NeuralNet
@@ -6,18 +7,18 @@ namespace NeuralNet
     [Serializable]
     public class SerialPerceptron
     {
-        public int[] neuronsPerLayer;
-        public float[][] weights;
-        public float[] biases;
+        public List<int> neuronsPerLayer;
+        public List<float[]> weights;
+        public List<float> biases;
 
-        public SerialPerceptron(int[] neuronsPerLayer, float[][] weights, float[] biases)
+        public SerialPerceptron(List<int> neuronsPerLayer, List<float[]> weights, List<float> biases)
         {
             this.neuronsPerLayer = neuronsPerLayer;
             this.weights = weights;
             this.biases = biases;
         }
     }
-    
+
     public class Perceptron
     {
         private Layer[] _layers;
@@ -89,17 +90,13 @@ namespace NeuralNet
 
         public SerialPerceptron ExportPerceptron()
         {
-            int[] neuronsPerLayer = new int[_layers.Length];
+            List<int> neuronsPerLayer = new List<int>();
 
             for (int i = 0; i < _layers.Length; i++)
-                neuronsPerLayer[i] = _layers[i].Neurons.Length;
+                neuronsPerLayer.Add(_layers[i].Neurons.Length);
 
-            int totalBiases = 0;
-            for (int i = 1; i < _layers.Length; i++)
-                totalBiases += neuronsPerLayer[i];
-
-            float[][] weights = new float[totalBiases][];
-            float[] biases = new float[totalBiases];
+            List<float[]> weights = new List<float[]>();
+            List<float> biases = new List<float>();
 
             for (int l = 1; l < _layers.Length; l++)
             {
@@ -107,8 +104,8 @@ namespace NeuralNet
                 for (int n = 0; n < layer.Neurons.Length; n++)
                 {
                     Neuron neuron = layer.Neurons[n];
-                    weights[l - 1 + n] = neuron.Weights;
-                    biases[l - 1 + n] = neuron.Bias;
+                    weights.Add(neuron.Weights);
+                    biases.Add(neuron.Bias);
                 }
             }
 
@@ -117,16 +114,18 @@ namespace NeuralNet
 
         public static Perceptron CreatePerceptron(SerialPerceptron serialPerceptron)
         {
-            Perceptron perceptron = new Perceptron(serialPerceptron.neuronsPerLayer);
+            Perceptron perceptron = new Perceptron(serialPerceptron.neuronsPerLayer.ToArray());
 
-            for (int l = 0; l < perceptron.Layers.Length; l++)
+            int neuronCounter = 0;
+            for (int l = 1; l < perceptron.Layers.Length; l++)
             {
                 Layer layer = perceptron.Layers[l];
                 for (int n = 0; n < layer.Neurons.Length; n++)
                 {
                     Neuron neuron = layer.Neurons[n];
-                    neuron.Weights = serialPerceptron.weights[l - 1 + n];
-                    neuron.Bias = serialPerceptron.biases[l - 1 + n];
+                    neuron.Weights = serialPerceptron.weights[neuronCounter];
+                    neuron.Bias = serialPerceptron.biases[neuronCounter];
+                    neuronCounter++;
                 }
             }
 
@@ -135,7 +134,7 @@ namespace NeuralNet
 
         public override string ToString()
         {
-            return $"Perceptron - Seed:{_seed} Neurons:{string.Join(", ", _layers.Select(layer => layer.Neurons.Length))}";
+            return $"Seed:{_seed} Neurons:{string.Join(", ", _layers.Select(layer => layer.Neurons.Length))}";
         }
     }
 

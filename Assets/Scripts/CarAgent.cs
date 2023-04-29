@@ -28,6 +28,7 @@ public class CarAgent : MonoBehaviour
     private float _currentTurning;
 
     private bool _crashed;
+    private bool _finished;
     private float _timeAlive;
     private float _toSlowCountdown = 2f;
 
@@ -36,6 +37,7 @@ public class CarAgent : MonoBehaviour
     public float SteeringInput => _steeringInput;
 
     public bool Crashed => _crashed;
+    public bool Finished => _finished;
 
     public float TimeAlive => _timeAlive;
 
@@ -44,6 +46,7 @@ public class CarAgent : MonoBehaviour
     {
         _timeAlive = 0f;
         _crashed = false;
+        _finished = false;
         _steeringInput = 0;
         _throttleInput = 0;
         _toSlowCountdown = 2f;
@@ -111,9 +114,14 @@ public class CarAgent : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (CompareTag(other.tag) == true)
+        if (CompareTag(other.tag))
             return;
 
+        if (other.CompareTag("Finish"))
+        {
+            _crashed = true;
+        }
+        
         _crashed = true;
     }
 

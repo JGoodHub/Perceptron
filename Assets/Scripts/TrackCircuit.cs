@@ -19,5 +19,13 @@ public class TrackCircuit : MonoBehaviour
 
         return false;
     }
+    
+    public int GetCurrentTrackTile(Transform target)
+    {
+        for (int i = 0; i < _trackTiles.Length; i++)
+            if (_trackTiles[i].InsideBounds(target.position))
+                return i;
 
+        return -1;
+    }
 }

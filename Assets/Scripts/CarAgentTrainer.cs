@@ -40,15 +40,15 @@ public class CarAgentTrainer : MonoBehaviour
     {
         float timeDelta = Time.deltaTime;
 
-        int crashCounter = 0;
+        int completedAgentsCounter = 0;
 
         foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
         {
             carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
 
-            if (carAgent.Crashed)
+            if (carAgent.Crashed || carAgent.Finished)
             {
-                crashCounter++;
+                completedAgentsCounter++;
                 continue;
             }
 
@@ -70,10 +70,13 @@ public class CarAgentTrainer : MonoBehaviour
             carAgent.UpdateWithTime(timeDelta);
 
             tracker.fitness = carAgent.TimeAlive;
+
+            if (carAgent.Finished)
+                tracker.fitness += 100;
         }
 
         // All agents have failed so time for a new generation
-        if (crashCounter == _agentsAndTrackers.Count)
+        if (completedAgentsCounter == _agentsAndTrackers.Count)
         {
             float maxBestFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
             UserInterface.Instance.UpdateText(_generationIndex++, maxBestFitness);
@@ -100,7 +103,7 @@ public class CarAgentTrainer : MonoBehaviour
 public class TrainingParameters
 {
     [SerializeField] private int _seed;
-    [SerializeField] private int[] _neuronCounts = {4, 24, 24, 4};
+    [SerializeField] private int[] _neuronCounts = { 4, 24, 24, 4 };
     [SerializeField] private int _populationCount = 60;
     [SerializeField] private AnimationCurve _survivalChanceCurve;
     [SerializeField] private float _crossoverRate = 0.6f;

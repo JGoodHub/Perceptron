@@ -7,6 +7,7 @@ using Random = UnityEngine.Random;
 
 public class CarAgentTrainer : MonoBehaviour
 {
+
     [SerializeField] private TrainingParameters _parameters;
 
     [SerializeField] private GameObject _carAgentPrefab;
@@ -34,6 +35,8 @@ public class CarAgentTrainer : MonoBehaviour
             GameObject carAgent = Instantiate(_carAgentPrefab, _spawnPoint.position, Quaternion.identity, transform);
             _agentsAndTrackers.Add(agentTracker, carAgent.GetComponent<CarAgent>());
         }
+
+        UserInterface.Instance.UpdateText(0, 0);
     }
 
     private void Update()
@@ -70,14 +73,22 @@ public class CarAgentTrainer : MonoBehaviour
             carAgent.UpdateWithTime(timeDelta);
 
             tracker.fitness = carAgent.TimeAlive;
-
-            if (carAgent.Finished)
-                tracker.fitness += 100;
         }
-
+        
         // All agents have failed so time for a new generation
         if (completedAgentsCounter == _agentsAndTrackers.Count)
         {
+            // Give each agent that finishes a bonus to make then go round the track faster
+            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            {
+                carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
+
+                if (carAgent.Finished)
+                {
+                    tracker.fitness += carAgent.DistanceTravelled / carAgent.TimeAlive;
+                }
+            }
+
             float maxBestFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
             UserInterface.Instance.UpdateText(_generationIndex++, maxBestFitness);
 
@@ -96,14 +107,15 @@ public class CarAgentTrainer : MonoBehaviour
             }
         }
     }
-}
 
+}
 
 [Serializable]
 public class TrainingParameters
 {
+
     [SerializeField] private int _seed;
-    [SerializeField] private int[] _neuronCounts = { 4, 24, 24, 4 };
+    [SerializeField] private int[] _neuronCounts = {4, 24, 24, 4};
     [SerializeField] private int _populationCount = 60;
     [SerializeField] private AnimationCurve _survivalChanceCurve;
     [SerializeField] private float _crossoverRate = 0.6f;
@@ -123,10 +135,12 @@ public class TrainingParameters
     public float MutationProbability => _mutationProbability;
 
     public float MutationRange => _mutationRange;
+
 }
 
 public class AgentTracker
 {
+
     public Perceptron perceptron;
     public float fitness;
 
@@ -139,10 +153,12 @@ public class AgentTracker
     {
         return $"Per:({perceptron}) | (Fit:{fitness})";
     }
+
 }
 
 public class AgentCollection
 {
+
     private TrainingParameters _parameters;
     private List<AgentTracker> _agentTrackers;
 
@@ -163,11 +179,13 @@ public class AgentCollection
 
     public void ApplySurvivalCurve()
     {
+        // Order agents by worst to best, worst first, best last
         _agentTrackers = _agentTrackers.OrderBy(tracker => tracker.fitness).ToList();
 
+        // Higher rank is better
         for (int rank = 0; rank < _agentTrackers.Count; rank++)
         {
-            float rankNormalised = rank / (float)(_parameters.PopulationCount - 1);
+            float rankNormalised = rank / (float) (_parameters.PopulationCount - 1);
             float survivalChance = _parameters.SurvivalChanceCurve.Evaluate(rankNormalised);
             float survivalValue = Random.Range(0f, 1f);
 
@@ -291,4 +309,5 @@ public class AgentCollection
             }
         }
     }
+
 }

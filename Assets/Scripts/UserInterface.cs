@@ -18,7 +18,7 @@ public class UserInterface : MonoBehaviour
     public void UpdateText(int generationIndex, float bestFitness)
     {
         _generationCounter.text = $"Generation: {generationIndex}";
-        _bestGenerationFitness.text = $"Best Fitness: {bestFitness}s";
+        _bestGenerationFitness.text = $"Best Fitness: {bestFitness}";
     }
 
 }

@@ -30,6 +30,7 @@ public class CarAgent : MonoBehaviour
     private bool _crashed;
     private bool _finished;
     private float _timeAlive;
+    private float _distanceTravelled;
     private float _toSlowCountdown = 2f;
 
     public float SpeedNormalised => _currentSpeed / _maxSpeed;
@@ -41,14 +42,19 @@ public class CarAgent : MonoBehaviour
 
     public float TimeAlive => _timeAlive;
 
+    public float DistanceTravelled => _distanceTravelled;
 
     public void ResetAgent()
     {
         _timeAlive = 0f;
+        _distanceTravelled = 0f;
+        
         _crashed = false;
         _finished = false;
+        
         _steeringInput = 0;
         _throttleInput = 0;
+        
         _toSlowCountdown = 2f;
     }
 
@@ -97,8 +103,10 @@ public class CarAgent : MonoBehaviour
         _currentTurning = _maxSteering * ((_steeringInput - 0.5f) * 2f);
         transform.Rotate(Vector3.forward, _currentTurning * -1f * deltaTime);
 
-        transform.position += transform.up * (_currentSpeed * deltaTime);
-
+        Vector3 translationVector = transform.up * (_currentSpeed * deltaTime);
+        transform.position += translationVector;
+        
+        _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
 
         if (_currentSpeed < 0.4f)
@@ -119,7 +127,8 @@ public class CarAgent : MonoBehaviour
 
         if (other.CompareTag("Finish"))
         {
-            _crashed = true;
+            _finished = true;
+            return;
         }
         
         _crashed = true;

@@ -3,21 +3,26 @@ using System.Collections.Generic;
 using System.Linq;
 using NeuralNet;
 using UnityEngine;
-using Random = UnityEngine.Random;
+using Random = System.Random;
 
 public class CarAgentTrainer : MonoBehaviour
 {
-
     [SerializeField] private TrainingParameters _parameters;
 
     [SerializeField] private GameObject _carAgentPrefab;
 
     [SerializeField] private Transform _spawnPoint;
 
+    [SerializeField] private float _averageSpeedFitnessMultiplier;
+
+    [SerializeField] private GraphElement _graph;
+
     private Dictionary<AgentTracker, CarAgent> _agentsAndTrackers;
 
     private AgentCollection _agentCollection;
     private int _generationIndex;
+
+    private List<float> _bestFitnessPerGeneration = new List<float>();
 
     private void Start()
     {
@@ -28,20 +33,32 @@ public class CarAgentTrainer : MonoBehaviour
 
     private void SpawnCarAgents()
     {
+        _bestFitnessPerGeneration.Add(0f);
+        
         _agentsAndTrackers = new Dictionary<AgentTracker, CarAgent>();
 
         foreach (AgentTracker agentTracker in _agentCollection.AgentTrackers)
         {
-            GameObject carAgent = Instantiate(_carAgentPrefab, _spawnPoint.position, Quaternion.identity, transform);
-            _agentsAndTrackers.Add(agentTracker, carAgent.GetComponent<CarAgent>());
+            CarAgent carAgent = Instantiate(_carAgentPrefab, _spawnPoint.position, Quaternion.identity, transform).GetComponent<CarAgent>();
+            carAgent.gameObject.name = $"{_carAgentPrefab.name}_{_agentsAndTrackers.Count}";
+
+            carAgent.ResetAgent();
+
+            carAgent.transform.position = _spawnPoint.position;
+            carAgent.transform.rotation = Quaternion.identity;
+
+            carAgent.GetComponent<SpriteRandomiser>().SelectSpriteFromSeed(agentTracker.perceptron.Seed);
+
+            _agentsAndTrackers.Add(agentTracker, carAgent);
         }
 
         UserInterface.Instance.UpdateText(0, 0);
+        _graph.Initialise("Fitness Graph", "Generation", 10, "Fitness", 10);
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
-        float timeDelta = Time.deltaTime;
+        float timeDelta = Time.fixedDeltaTime;
 
         int completedAgentsCounter = 0;
 
@@ -74,8 +91,8 @@ public class CarAgentTrainer : MonoBehaviour
 
             tracker.fitness = carAgent.TimeAlive;
         }
-        
-        // All agents have failed so time for a new generation
+
+        // All agents have completed so time for a new generation
         if (completedAgentsCounter == _agentsAndTrackers.Count)
         {
             // Give each agent that finishes a bonus to make then go round the track faster
@@ -85,12 +102,20 @@ public class CarAgentTrainer : MonoBehaviour
 
                 if (carAgent.Finished)
                 {
-                    tracker.fitness += carAgent.DistanceTravelled / carAgent.TimeAlive;
+                    tracker.fitness += (carAgent.DistanceTravelled / carAgent.TimeAlive) * _averageSpeedFitnessMultiplier;
                 }
             }
 
-            float maxBestFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
-            UserInterface.Instance.UpdateText(_generationIndex++, maxBestFitness);
+            float maxFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
+            _bestFitnessPerGeneration.Add(maxFitness);
+
+            UserInterface.Instance.UpdateText(_generationIndex++, maxFitness);
+
+            List<Vector2> fitnessData = new List<Vector2>();
+            for (int i = 0; i < _bestFitnessPerGeneration.Count; i++)
+                fitnessData.Add(new Vector2(i, _bestFitnessPerGeneration[i]));
+
+            _graph.SetBodyData(fitnessData);
 
             _agentCollection.ApplySurvivalCurve();
             _agentCollection.Repopulate();
@@ -107,15 +132,13 @@ public class CarAgentTrainer : MonoBehaviour
             }
         }
     }
-
 }
 
 [Serializable]
 public class TrainingParameters
 {
-
     [SerializeField] private int _seed;
-    [SerializeField] private int[] _neuronCounts = {4, 24, 24, 4};
+    [SerializeField] private int[] _neuronCounts = { 4, 24, 24, 4 };
     [SerializeField] private int _populationCount = 60;
     [SerializeField] private AnimationCurve _survivalChanceCurve;
     [SerializeField] private float _crossoverRate = 0.6f;
@@ -135,12 +158,10 @@ public class TrainingParameters
     public float MutationProbability => _mutationProbability;
 
     public float MutationRange => _mutationRange;
-
 }
 
 public class AgentTracker
 {
-
     public Perceptron perceptron;
     public float fitness;
 
@@ -153,25 +174,29 @@ public class AgentTracker
     {
         return $"Per:({perceptron}) | (Fit:{fitness})";
     }
-
 }
 
 public class AgentCollection
 {
-
     private TrainingParameters _parameters;
     private List<AgentTracker> _agentTrackers;
 
+    private Random _random;
+
     public List<AgentTracker> AgentTrackers => _agentTrackers;
+
+    public Random Random => _random;
 
     public AgentCollection(TrainingParameters parameters)
     {
+        _random = new Random(parameters.Seed);
+
         _parameters = parameters;
         _agentTrackers = new List<AgentTracker>();
 
         for (int i = 0; i < parameters.PopulationCount; i++)
         {
-            Perceptron perceptron = new Perceptron(parameters.NeuronCounts, parameters.Seed + i);
+            Perceptron perceptron = new Perceptron(parameters.NeuronCounts, _random.Next());
             AgentTracker agentTracker = new AgentTracker(perceptron);
             _agentTrackers.Add(agentTracker);
         }
@@ -185,9 +210,9 @@ public class AgentCollection
         // Higher rank is better
         for (int rank = 0; rank < _agentTrackers.Count; rank++)
         {
-            float rankNormalised = rank / (float) (_parameters.PopulationCount - 1);
+            float rankNormalised = rank / (float)(_parameters.PopulationCount - 1);
             float survivalChance = _parameters.SurvivalChanceCurve.Evaluate(rankNormalised);
-            float survivalValue = Random.Range(0f, 1f);
+            float survivalValue = _random.NextFloat(0f, 1f);
 
             if (survivalValue > survivalChance)
             {
@@ -211,7 +236,7 @@ public class AgentCollection
             AgentTracker parentTwo = SelectParent(survivingTrackers, parentOne);
 
             // Export genomes
-            SerialPerceptron genomeOne = parentOne.perceptron.ExportPerceptron();
+            SerialPerceptron genomeOne = parentOne.perceptron.ExportPerceptron();            
             SerialPerceptron genomeTwo = parentTwo.perceptron.ExportPerceptron();
 
             CrossoverGenomes(genomeOne, genomeTwo);
@@ -219,13 +244,15 @@ public class AgentCollection
             MutateGenome(genomeOne);
             MutateGenome(genomeTwo);
 
-            Perceptron childPerceptronOne = Perceptron.CreatePerceptron(genomeOne);
+            Perceptron childPerceptronOne = Perceptron.CreatePerceptron(genomeOne, _random.Next());
             trackerOne.perceptron = childPerceptronOne;
+            trackerOne.fitness = 0f;
 
             if (trackerTwo != null)
             {
-                Perceptron childPerceptronTwo = Perceptron.CreatePerceptron(genomeOne);
+                Perceptron childPerceptronTwo = Perceptron.CreatePerceptron(genomeTwo, _random.Next());
                 trackerTwo.perceptron = childPerceptronTwo;
+                trackerTwo.fitness = 0f;
             }
         }
     }
@@ -234,7 +261,7 @@ public class AgentCollection
     {
         float fitnessSum = sourcePool.Sum(tracker => tracker.fitness);
 
-        float parentFitnessValue = Random.Range(0, fitnessSum);
+        float parentFitnessValue = _random.NextFloat(0, fitnessSum);
         float runningTotal = 0;
 
         foreach (AgentTracker tracker in sourcePool)
@@ -257,13 +284,11 @@ public class AgentCollection
         {
             for (int w = 0; w < genomeOne.weights[n].Length; w++)
             {
-                float swapChance = Random.Range(0f, 1f);
+                float swapChance = _random.NextFloat();
 
                 if (swapChance <= _parameters.CrossoverRate)
                 {
-                    float weightTemp = genomeOne.weights[n][w];
-                    genomeOne.weights[n][w] = genomeTwo.weights[n][w];
-                    genomeTwo.weights[n][w] = weightTemp;
+                    (genomeOne.weights[n][w], genomeTwo.weights[n][w]) = (genomeTwo.weights[n][w], genomeOne.weights[n][w]);
                 }
             }
         }
@@ -271,13 +296,11 @@ public class AgentCollection
         // Swap the bias genes
         for (int b = 0; b < genomeOne.biases.Count; b++)
         {
-            float swapChance = Random.Range(0f, 1f);
+            float swapChance = _random.NextFloat();
 
             if (swapChance <= _parameters.CrossoverRate)
             {
-                float biasTemp = genomeOne.biases[b];
-                genomeOne.biases[b] = genomeTwo.biases[b];
-                genomeTwo.biases[b] = biasTemp;
+                (genomeOne.biases[b], genomeTwo.biases[b]) = (genomeTwo.biases[b], genomeOne.biases[b]);
             }
         }
     }
@@ -289,11 +312,11 @@ public class AgentCollection
         {
             for (int w = 0; w < genome.weights[n].Length; w++)
             {
-                float mutateChance = Random.Range(0f, 1f);
+                float mutateChance = _random.NextFloat();
 
                 if (mutateChance <= _parameters.MutationProbability)
                 {
-                    genome.weights[n][w] = Random.Range(_parameters.MutationRange * -1f, _parameters.MutationRange);
+                    genome.weights[n][w] = _random.NextFloat(_parameters.MutationRange * -1f, _parameters.MutationRange);
                 }
             }
         }
@@ -301,13 +324,12 @@ public class AgentCollection
         // Mutate the bias genes
         for (int b = 0; b < genome.biases.Count; b++)
         {
-            float mutateChance = Random.Range(0f, 1f);
+            float mutateChance = _random.NextFloat();
 
             if (mutateChance <= _parameters.MutationProbability)
             {
-                genome.biases[b] = Random.Range(_parameters.MutationRange * -1f, _parameters.MutationRange);
+                genome.biases[b] = _random.NextFloat(_parameters.MutationRange * -1f, _parameters.MutationRange);
             }
         }
     }
-
 }

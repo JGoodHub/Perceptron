@@ -20,6 +20,8 @@ public class CarAgent : MonoBehaviour
     [SerializeField] private float _maxAcceleration;
     [SerializeField] private float _maxSpeed;
     [SerializeField] private float _maxSteering;
+    [Space]
+    [SerializeField] private LineRenderer _lineRenderer;
 
     private float _throttleInput;
     private float _steeringInput;
@@ -48,13 +50,13 @@ public class CarAgent : MonoBehaviour
     {
         _timeAlive = 0f;
         _distanceTravelled = 0f;
-        
+
         _crashed = false;
         _finished = false;
-        
+
         _steeringInput = 0;
         _throttleInput = 0;
-        
+
         _toSlowCountdown = 2f;
     }
 
@@ -93,10 +95,9 @@ public class CarAgent : MonoBehaviour
     public void UpdateWithTime(float deltaTime)
     {
         float accelerationAtSpeed = _accelerationCurve.Evaluate(_currentSpeed / _maxSpeed);
-        _currentSpeed += _throttleInput * (_maxAcceleration * accelerationAtSpeed);
-
-        if (_throttleInput <= 0)
-            _currentSpeed -= _maxSpeed * deltaTime;
+        
+        _currentSpeed += (_maxAcceleration * accelerationAtSpeed) * _throttleInput;
+        _currentSpeed -= (_maxSpeed * deltaTime) * (1f - _throttleInput);
 
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0, _maxSpeed);
 
@@ -105,7 +106,7 @@ public class CarAgent : MonoBehaviour
 
         Vector3 translationVector = transform.up * (_currentSpeed * deltaTime);
         transform.position += translationVector;
-        
+
         _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
 
@@ -130,7 +131,7 @@ public class CarAgent : MonoBehaviour
             _finished = true;
             return;
         }
-        
+
         _crashed = true;
     }
 
@@ -145,7 +146,7 @@ public class CarAgent : MonoBehaviour
 
             int layerMask = ~LayerMask.GetMask("Agents");
             RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance, layerMask);
-            
+
             if (raycastHit.collider != null)
             {
                 contactDistance = raycastHit.distance;

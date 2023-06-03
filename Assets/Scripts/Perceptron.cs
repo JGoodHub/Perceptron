@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static Unity.Burst.Intrinsics.Arm;
+using static UnityEditor.Experimental.GraphView.GraphView;
 
 namespace NeuralNet
 {
@@ -17,6 +19,32 @@ namespace NeuralNet
             this.weights = weights;
             this.biases = biases;
         }
+
+        public override string ToString()
+        {
+            return $"Hashcode:{GetHashCode()}";
+        }
+
+        public override int GetHashCode()
+        {
+            HashCode hashCode = new HashCode();
+
+            for (int i = 0; i < neuronsPerLayer.Count; i++)
+                hashCode.Add(neuronsPerLayer[i]);
+
+            for (int n = 0; n < weights.Count; n++)
+            {
+                for (int w = 0; w < weights[n].Length; w++)
+                {
+                    hashCode.Add(weights[n][w]);
+                }
+
+                hashCode.Add(biases[n]);
+            }
+
+
+            return hashCode.ToHashCode();
+        }
     }
 
     public class Perceptron
@@ -27,9 +55,11 @@ namespace NeuralNet
 
         private int _seed;
 
-        public Perceptron(int[] neuronsPerLayer, int seed = -1)
+        public int Seed => _seed;
+
+        public Perceptron(int[] neuronsPerLayer, int seed)
         {
-            seed = seed < 0 ? seed : DateTime.Now.GetHashCode();
+            _seed = seed == -1 ? DateTime.Now.GetHashCode() : seed;
             Random random = new Random(seed);
 
             _layers = new Layer[neuronsPerLayer.Length];
@@ -104,7 +134,8 @@ namespace NeuralNet
                 for (int n = 0; n < layer.Neurons.Length; n++)
                 {
                     Neuron neuron = layer.Neurons[n];
-                    weights.Add(neuron.Weights);
+
+                    weights.Add((float[])neuron.Weights.Clone());
                     biases.Add(neuron.Bias);
                 }
             }
@@ -112,9 +143,9 @@ namespace NeuralNet
             return new SerialPerceptron(neuronsPerLayer, weights, biases);
         }
 
-        public static Perceptron CreatePerceptron(SerialPerceptron serialPerceptron)
+        public static Perceptron CreatePerceptron(SerialPerceptron serialPerceptron, int seed)
         {
-            Perceptron perceptron = new Perceptron(serialPerceptron.neuronsPerLayer.ToArray());
+            Perceptron perceptron = new Perceptron(serialPerceptron.neuronsPerLayer.ToArray(), seed);
 
             int neuronCounter = 0;
             for (int l = 1; l < perceptron.Layers.Length; l++)
@@ -123,7 +154,7 @@ namespace NeuralNet
                 for (int n = 0; n < layer.Neurons.Length; n++)
                 {
                     Neuron neuron = layer.Neurons[n];
-                    neuron.Weights = serialPerceptron.weights[neuronCounter];
+                    neuron.Weights = (float[])serialPerceptron.weights[neuronCounter].Clone();
                     neuron.Bias = serialPerceptron.biases[neuronCounter];
                     neuronCounter++;
                 }
@@ -134,7 +165,31 @@ namespace NeuralNet
 
         public override string ToString()
         {
-            return $"Seed:{_seed} Neurons:{string.Join(", ", _layers.Select(layer => layer.Neurons.Length))}";
+            return $"Seed:{_seed} Hashcode:{GetHashCode()}";
+        }
+
+        public override int GetHashCode()
+        {
+            HashCode hashCode = new HashCode();
+
+            for (int i = 0; i < _layers.Length; i++)
+                hashCode.Add(_layers[i].Neurons.Length);
+
+            for (int l = 1; l < _layers.Length; l++)
+            {
+                Layer layer = _layers[l];
+                for (int n = 0; n < layer.Neurons.Length; n++)
+                {
+                    Neuron neuron = layer.Neurons[n];
+
+                    for (int w = 0; w < neuron.Weights.Length; w++)
+                        hashCode.Add(neuron.Weights[w]);
+
+                    hashCode.Add(neuron.Bias);
+                }
+            }
+
+            return hashCode.ToHashCode();
         }
     }
 
@@ -256,7 +311,7 @@ namespace NeuralNet
 
         public static float NextFloat(this Random random, float min, float max)
         {
-            return min + ((max - min) * random.NextFloat());
+            return min + ((max - min) * ((float)random.NextDouble()));
         }
     }
 

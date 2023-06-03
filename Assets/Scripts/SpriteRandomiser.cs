@@ -10,9 +10,9 @@ public class SpriteRandomiser : MonoBehaviour
     [SerializeField] private SpriteRenderer _targetImage;
     [SerializeField] private Sprite[] _sourceSprites;
 
-    private void Start()
+    public void SelectSpriteFromSeed(int seed)
     {
-        _targetImage.sprite = _sourceSprites[Random.Range(0, _sourceSprites.Length)];
+        _targetImage.sprite = _sourceSprites[seed % _sourceSprites.Length];
     }
-    
+
 }

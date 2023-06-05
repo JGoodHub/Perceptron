@@ -42,12 +42,11 @@ public class CarAgentTrainer : MonoBehaviour
             CarAgent carAgent = Instantiate(_carAgentPrefab, _spawnPoint.position, Quaternion.identity, transform).GetComponent<CarAgent>();
             carAgent.gameObject.name = $"{_carAgentPrefab.name}_{_agentsAndTrackers.Count}";
 
-            carAgent.ResetAgent();
-
             carAgent.transform.position = _spawnPoint.position;
             carAgent.transform.rotation = Quaternion.identity;
 
-            carAgent.GetComponent<SpriteRandomiser>().SelectSpriteFromSeed(agentTracker.perceptron.Seed);
+            carAgent.ResetAgent();
+            carAgent.InitialiseGraphics(agentTracker.perceptron.Seed);
 
             _agentsAndTrackers.Add(agentTracker, carAgent);
         }
@@ -89,7 +88,7 @@ public class CarAgentTrainer : MonoBehaviour
 
             carAgent.UpdateWithTime(timeDelta);
 
-            tracker.fitness = carAgent.TimeAlive;
+            tracker.fitness = carAgent.TrackProgress;
         }
 
         // All agents have completed so time for a new generation
@@ -125,10 +124,11 @@ public class CarAgentTrainer : MonoBehaviour
             {
                 carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
 
-                carAgent.ResetAgent();
-
                 carAgent.transform.position = _spawnPoint.position;
                 carAgent.transform.rotation = Quaternion.identity;
+
+                carAgent.ResetAgent();
+
             }
         }
     }

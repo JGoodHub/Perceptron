@@ -21,7 +21,7 @@ public class CarAgent : MonoBehaviour
     [SerializeField] private float _maxSpeed;
     [SerializeField] private float _maxSteering;
     [Space]
-    [SerializeField] private LineRenderer _lineRenderer;
+    [SerializeField] private CarGraphicsSwapper _graphics;
 
     private float _throttleInput;
     private float _steeringInput;
@@ -32,32 +32,48 @@ public class CarAgent : MonoBehaviour
     private bool _crashed;
     private bool _finished;
     private float _timeAlive;
+    private float _trackProgress;
     private float _distanceTravelled;
     private float _toSlowCountdown = 2f;
+
 
     public float SpeedNormalised => _currentSpeed / _maxSpeed;
 
     public float SteeringInput => _steeringInput;
 
     public bool Crashed => _crashed;
+
     public bool Finished => _finished;
 
     public float TimeAlive => _timeAlive;
 
+    public float TrackProgress => _trackProgress;
+
     public float DistanceTravelled => _distanceTravelled;
+
+    public void InitialiseGraphics(int seed)
+    {
+        _graphics.SelectColourFromSeed(seed);
+    }
 
     public void ResetAgent()
     {
+        _trackProgress = 0f;
         _timeAlive = 0f;
         _distanceTravelled = 0f;
 
         _crashed = false;
         _finished = false;
 
-        _steeringInput = 0;
+        _currentSpeed = 0;
+        _currentTurning = 0;
+
         _throttleInput = 0;
+        _steeringInput = 0;
 
         _toSlowCountdown = 2f;
+
+        _graphics.ResetPositionHistory();
     }
 
     public void SetThrottle(float throttle)
@@ -109,6 +125,7 @@ public class CarAgent : MonoBehaviour
 
         _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
+        _trackProgress = Mathf.Max(_trackProgress, TrackCircuit.Instance.GetDistanceAlongTrack(transform));
 
         if (_currentSpeed < 0.4f)
             _toSlowCountdown -= deltaTime;
@@ -119,6 +136,8 @@ public class CarAgent : MonoBehaviour
         {
             _crashed = true;
         }
+
+        _graphics.LogPosition();
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -137,6 +156,8 @@ public class CarAgent : MonoBehaviour
 
     private void OnDrawGizmos()
     {
+        return;
+
         foreach (ViewRay viewRay in _viewRays)
         {
             Gizmos.color = Color.green;

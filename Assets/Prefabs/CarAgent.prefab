@@ -103,7 +103,7 @@ MonoBehaviour:
   _maxAcceleration: 1
   _maxSpeed: 2.5
   _maxSteering: 60
-  _lineRenderer: {fileID: 0}
+  _graphics: {fileID: 7071339685452820148}
 --- !u!50 &-3490446664688855614
 Rigidbody2D:
   serializedVersion: 4
@@ -138,12 +138,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _targetImage: {fileID: 331614763274343997}
-  _sourceSprites:
-  - {fileID: 21300000, guid: 9e77e6c6171fa084d93651d8f6ceeb06, type: 3}
-  - {fileID: 21300000, guid: d441f7bb5be13044f84724fa7d982e2c, type: 3}
-  - {fileID: 21300000, guid: a004a2d317aadea4cad7ed207649087b, type: 3}
-  - {fileID: 21300000, guid: 2b252333ae4267846829c5b0f6dce959, type: 3}
-  - {fileID: 21300000, guid: ea2d13aea23115449aff13e9a8be6753, type: 3}
+  _lineRenderer: {fileID: 8420153399865530490}
+  _colourSettings:
+  - definedColour: 0
+    sprite: {fileID: 21300000, guid: 9e77e6c6171fa084d93651d8f6ceeb06, type: 3}
+    lineColour: {r: 0.2, g: 0.2, b: 0.2, a: 1}
+  - definedColour: 1
+    sprite: {fileID: 21300000, guid: d441f7bb5be13044f84724fa7d982e2c, type: 3}
+    lineColour: {r: 1, g: 0, b: 0, a: 1}
+  - definedColour: 2
+    sprite: {fileID: 21300000, guid: a004a2d317aadea4cad7ed207649087b, type: 3}
+    lineColour: {r: 1, g: 0.920817, b: 0, a: 1}
+  - definedColour: 3
+    sprite: {fileID: 21300000, guid: 2b252333ae4267846829c5b0f6dce959, type: 3}
+    lineColour: {r: 0.03184688, g: 1, b: 0, a: 1}
+  - definedColour: 4
+    sprite: {fileID: 21300000, guid: ea2d13aea23115449aff13e9a8be6753, type: 3}
+    lineColour: {r: 0, g: 0.46932554, b: 1, a: 1}
 --- !u!120 &8420153399865530490
 LineRenderer:
   m_ObjectHideFlags: 0
@@ -164,7 +175,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 7d1f240281bc2ea40a04468b138ee4cb, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -184,11 +195,11 @@ LineRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: -374382945
   m_SortingLayer: 1
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_Positions: []
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.1
+    widthMultiplier: 0.025
     widthCurve:
       serializedVersion: 2
       m_Curve:

@@ -2,14 +2,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using GoodHub.Core.Runtime.Curves;
 using UnityEngine;
 
-public class TrackCircuit : MonoBehaviour
+public class TrackCircuit : MonoBehaviour, ITrainingEnvironment
 {
     [SerializeField] private Transform _startTransform;
     [SerializeField] private List<TrackTile> _trackTiles;
 
-    private Polygon _trackPolyLine;
+    private CurvedPath _trackPolyLine;
 
     public Transform StartTransform => _startTransform;
 
@@ -17,7 +18,7 @@ public class TrackCircuit : MonoBehaviour
     {
         Vector3[] controlPoints = _trackTiles.Select(tile => tile.transform.position).ToArray();
 
-        _trackPolyLine = new Polygon(controlPoints, false);
+        _trackPolyLine = new CurvedPath(controlPoints, false);
     }
 
     public bool IsAlignedToTrack(Transform target)

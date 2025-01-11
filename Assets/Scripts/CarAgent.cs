@@ -132,14 +132,14 @@ public class CarAgent : MonoBehaviour
 
         _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
-        _trackProgress = Mathf.Max(_trackProgress, TrackManager.Instance.CurrentTrack.GetDistanceAlongTrack(transform));
+        _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetDistanceAlongTrack(transform));
 
-        if (_currentSpeed < 0.4f)
+        if (_currentSpeed < 0.3f)
             _toSlowCountdown -= deltaTime;
         else
             _toSlowCountdown = 2f;
 
-        if (TrackManager.Instance.CurrentTrack.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
+        if (TrackManager.Singleton.CurrentTrack.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
         {
             _state = AgentState.Timeout;
         }

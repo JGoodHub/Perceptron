@@ -26,7 +26,8 @@ public class TrackManager : SceneSingleton<TrackManager>
 
     public void IncrementTrack()
     {
-        _currentTrack = _tracks[_currentTrackIndex++ % _tracks.Count];
+        _currentTrackIndex = (_currentTrackIndex + 1) % _tracks.Count;
+        _currentTrack = _tracks[_currentTrackIndex];
 
         foreach (TrackCircuit trackCircuit in _tracks)
         {

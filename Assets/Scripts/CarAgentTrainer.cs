@@ -20,7 +20,7 @@ public class CarAgentTrainer : MonoBehaviour
     private AgentCollection _agentCollection;
     private int _generationIndex;
 
-    private List<float> _bestFitnessPerGeneration = new List<float>();
+    private Dictionary<ITrainingEnvironment, List<float>> _bestFitness = new Dictionary<ITrainingEnvironment, List<float>>();
 
     private int _stagnantGenerationCountdown;
     private bool _stagnated;
@@ -39,17 +39,17 @@ public class CarAgentTrainer : MonoBehaviour
 
     private void SpawnCarAgents()
     {
-        _bestFitnessPerGeneration.Add(0f);
+        TrackCircuit trainingEnvironment = TrackManager.Singleton.CurrentTrack;
 
         _agentsAndTrackers = new Dictionary<AgentTracker, CarAgent>();
 
         foreach (AgentTracker agentTracker in _agentCollection.AgentTrackers)
         {
-            CarAgent carAgent = Instantiate(_carAgentPrefab, TrackManager.Instance.CurrentTrack.StartTransform.position, Quaternion.identity, transform).GetComponent<CarAgent>();
+            CarAgent carAgent = Instantiate(_carAgentPrefab, trainingEnvironment.StartTransform.position, Quaternion.identity, transform).GetComponent<CarAgent>();
             carAgent.gameObject.name = $"{_carAgentPrefab.name}_{_agentsAndTrackers.Count}";
 
-            carAgent.transform.position = TrackManager.Instance.CurrentTrack.StartTransform.position;
-            carAgent.transform.rotation = TrackManager.Instance.CurrentTrack.StartTransform.rotation;
+            carAgent.transform.position = trainingEnvironment.StartTransform.position;
+            carAgent.transform.rotation = trainingEnvironment.StartTransform.rotation;
 
             carAgent.ResetAgent();
             carAgent.InitialiseGraphics(agentTracker.perceptron.Seed);
@@ -69,6 +69,14 @@ public class CarAgentTrainer : MonoBehaviour
 
         while (_generationIndex < _maxGenerations)
         {
+            TrackCircuit trainingEnvironment = TrackManager.Singleton.CurrentTrack;
+
+            if (_bestFitness.ContainsKey(trainingEnvironment) == false)
+            {
+                _bestFitness.Add(trainingEnvironment, new List<float>());
+                _bestFitness[trainingEnvironment].Add(0f);
+            }
+            
             HashSet<AgentTracker> completedTrackers = new HashSet<AgentTracker>();
             List<AgentTracker> finishedTrackers = new List<AgentTracker>();
 
@@ -124,7 +132,7 @@ public class CarAgentTrainer : MonoBehaviour
             yield return new WaitForSeconds(0.1f);
 
             // TRAINING SESSION FINISHED - All agents have completed so time for a new generation
-            
+
             // Give each agent that finishes a bonus based on their position to make then go round the track faster
             for (int i = 0; i < finishedTrackers.Count; i++)
             {
@@ -134,7 +142,7 @@ public class CarAgentTrainer : MonoBehaviour
             float maxFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
 
             // Check if the simulation has stagnated
-            if (_generationIndex > 20 && maxFitness <= _bestFitnessPerGeneration[^1])
+            if (_generationIndex > 10 && maxFitness <= _bestFitness[trainingEnvironment][^1])
                 _stagnantGenerationCountdown--;
             else
                 _stagnantGenerationCountdown = _stagnantGenerationThreshold;
@@ -142,20 +150,19 @@ public class CarAgentTrainer : MonoBehaviour
             _stagnated = _stagnantGenerationCountdown <= 0;
 
             // Log the best fitness text
-            _bestFitnessPerGeneration.Add(maxFitness);
+            _bestFitness[trainingEnvironment].Add(maxFitness);
             _generationIndex++;
 
             if (_stagnated)
             {
-                TrackManager.Instance.IncrementTrack();
+                TrackManager.Singleton.IncrementTrack();
                 _stagnantGenerationCountdown = _stagnantGenerationThreshold;
-                _stagnated = false;
             }
 
             // Log the best fitness graph
             List<Vector2> fitnessData = new List<Vector2>();
-            for (int i = 0; i < _bestFitnessPerGeneration.Count; i++)
-                fitnessData.Add(new Vector2(i, _bestFitnessPerGeneration[i]));
+            for (int i = 0; i < _bestFitness[trainingEnvironment].Count; i++)
+                fitnessData.Add(new Vector2(i, _bestFitness[trainingEnvironment][i]));
 
             _graph.SetBodyData(fitnessData);
 
@@ -165,13 +172,19 @@ public class CarAgentTrainer : MonoBehaviour
             _agentCollection.ApplySurvivalCurve();
             _agentCollection.Repopulate();
 
+            if (_stagnated)
+            {
+                trainingEnvironment = TrackManager.Singleton.CurrentTrack;
+                _stagnated = false;
+            }
+
             // Reset all the cars
             foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
             {
-                carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
+                carTrackerPair.Deconstruct(out AgentTracker _, out CarAgent carAgent);
 
-                carAgent.transform.position = TrackManager.Instance.CurrentTrack.StartTransform.position;
-                carAgent.transform.rotation = TrackManager.Instance.CurrentTrack.StartTransform.rotation;
+                carAgent.transform.position = trainingEnvironment.StartTransform.position;
+                carAgent.transform.rotation = trainingEnvironment.StartTransform.rotation;
 
                 carAgent.ResetAgent();
             }

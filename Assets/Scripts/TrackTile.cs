@@ -21,7 +21,7 @@ public class TrackTile : MonoBehaviour
     public bool IsAlignedWithTrack(Transform target)
     {
         Vector2 localDirection = transform.TransformDirection(_forwardDirection);
-        return Vector2.Dot(localDirection, target.up) > -0.25f;
+        return Vector2.Dot(localDirection, target.up) > -0.34f;
     }
 
     public bool InsideBounds(Vector2 position)
@@ -35,8 +35,7 @@ public class TrackTile : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-
-        return;
+        //return;
 
         Gizmos.color = Color.cyan;
         Vector2 min = (Vector2)(transform.position) - (_bounds / 2);

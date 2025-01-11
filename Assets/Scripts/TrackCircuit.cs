@@ -6,15 +6,14 @@ using UnityEngine;
 
 public class TrackCircuit : MonoBehaviour
 {
-    public static TrackCircuit Instance;
-
-    private void Awake() => Instance = this;
-
+    [SerializeField] private Transform _startTransform;
     [SerializeField] private List<TrackTile> _trackTiles;
 
     private Polygon _trackPolyLine;
 
-    private void Start()
+    public Transform StartTransform => _startTransform;
+
+    private void Awake()
     {
         Vector3[] controlPoints = _trackTiles.Select(tile => tile.transform.position).ToArray();
 

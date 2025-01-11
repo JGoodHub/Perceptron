@@ -12,19 +12,18 @@ public class UserInterface : MonoBehaviour
 
     private void Awake() => Instance = this;
 
-
-
     [SerializeField] private Text _generationCounter;
     [SerializeField] private Text _bestGenerationFitness;
-    [SerializeField] private Slider _timeSlider;
-    [SerializeField] private TextMeshProUGUI _timeScaleText;
-
-    private float _fixedDeltaTime;
+    [SerializeField] private Toggle _frameToggle;
+    [SerializeField] private Toggle _compToggle;
 
     private void Start()
     {
-        _timeSlider.onValueChanged.AddListener(TimeSliderValueChanged);
-        _fixedDeltaTime = Time.fixedDeltaTime;
+        _frameToggle.onValueChanged.AddListener(ToggleYield);
+        _compToggle.onValueChanged.AddListener(ToggleComp);
+        
+       _frameToggle.isOn = FindObjectOfType<CarAgentTrainer>().YieldEveryFrame;
+       _compToggle.isOn = FindObjectOfType<CarAgentTrainer>().YieldOnComplete;
     }
 
     public void UpdateText(int generationIndex, float bestFitness)
@@ -33,13 +32,14 @@ public class UserInterface : MonoBehaviour
         _bestGenerationFitness.text = $"Best Fitness: {bestFitness}";
     }
 
-    
-    private void TimeSliderValueChanged(float newValue)
+    public void ToggleYield(bool state)
     {
-        Time.timeScale = newValue;
-        Time.fixedDeltaTime = _fixedDeltaTime * Time.timeScale;
-
-        _timeScaleText.text = "x" + newValue;
+        FindObjectOfType<CarAgentTrainer>().YieldEveryFrame = state;
+    }
+    
+    public void ToggleComp(bool state)
+    {
+        FindObjectOfType<CarAgentTrainer>().YieldOnComplete = state;
     }
 
 }

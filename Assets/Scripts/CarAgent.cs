@@ -14,6 +14,15 @@ public class CarAgent : MonoBehaviour
         public float MaxDistance;
     }
 
+    [Serializable]
+    public enum AgentState
+    {
+        Alive,
+        Timeout,
+        Crashed,
+        Finished
+    }
+
     [SerializeField] private List<ViewRay> _viewRays;
 
     [SerializeField] private AnimationCurve _accelerationCurve;
@@ -29,22 +38,18 @@ public class CarAgent : MonoBehaviour
     private float _currentSpeed;
     private float _currentTurning;
 
-    private bool _crashed;
-    private bool _finished;
+    private AgentState _state;
     private float _timeAlive;
     private float _trackProgress;
     private float _distanceTravelled;
     private float _toSlowCountdown = 2f;
 
+    public AgentState State => _state;
 
     public float SpeedNormalised => _currentSpeed / _maxSpeed;
 
     public float SteeringInput => _steeringInput;
-
-    public bool Crashed => _crashed;
-
-    public bool Finished => _finished;
-
+    
     public float TimeAlive => _timeAlive;
 
     public float TrackProgress => _trackProgress;
@@ -62,9 +67,8 @@ public class CarAgent : MonoBehaviour
         _timeAlive = 0f;
         _distanceTravelled = 0f;
 
-        _crashed = false;
-        _finished = false;
-
+        _state = AgentState.Alive;
+            
         _currentSpeed = 0;
         _currentTurning = 0;
 
@@ -96,7 +100,7 @@ public class CarAgent : MonoBehaviour
 
             float contactDistanceNormalised = 1f;
 
-            int layerMask = ~LayerMask.GetMask("Agents");
+            int layerMask = ~LayerMask.GetMask("Agents", "Finish");
             RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance, layerMask);
 
             if (raycastHit.collider != null)
@@ -110,6 +114,9 @@ public class CarAgent : MonoBehaviour
 
     public void UpdateWithTime(float deltaTime)
     {
+        if (_state != AgentState.Alive)
+            return;
+        
         float accelerationAtSpeed = _accelerationCurve.Evaluate(_currentSpeed / _maxSpeed);
         
         _currentSpeed += (_maxAcceleration * accelerationAtSpeed) * _throttleInput;
@@ -125,16 +132,16 @@ public class CarAgent : MonoBehaviour
 
         _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
-        _trackProgress = Mathf.Max(_trackProgress, TrackCircuit.Instance.GetDistanceAlongTrack(transform));
+        _trackProgress = Mathf.Max(_trackProgress, TrackManager.Instance.CurrentTrack.GetDistanceAlongTrack(transform));
 
         if (_currentSpeed < 0.4f)
             _toSlowCountdown -= deltaTime;
         else
             _toSlowCountdown = 2f;
 
-        if (TrackCircuit.Instance.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
+        if (TrackManager.Instance.CurrentTrack.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
         {
-            _crashed = true;
+            _state = AgentState.Timeout;
         }
 
         _graphics.LogPosition();
@@ -147,16 +154,16 @@ public class CarAgent : MonoBehaviour
 
         if (other.CompareTag("Finish"))
         {
-            _finished = true;
+            _state = AgentState.Finished;
             return;
         }
 
-        _crashed = true;
+        _state = AgentState.Crashed;
     }
 
     private void OnDrawGizmos()
     {
-        return;
+        //return;
 
         foreach (ViewRay viewRay in _viewRays)
         {
@@ -165,7 +172,7 @@ public class CarAgent : MonoBehaviour
             Vector3 viewRayDirection = Quaternion.Euler(0, 0, -viewRay.Angle) * transform.up;
             float contactDistance = viewRay.MaxDistance;
 
-            int layerMask = ~LayerMask.GetMask("Agents");
+            int layerMask = ~LayerMask.GetMask("Agents", "Finish");
             RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance, layerMask);
 
             if (raycastHit.collider != null)

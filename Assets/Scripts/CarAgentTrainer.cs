@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using NeuralNet;
@@ -8,14 +9,11 @@ using Random = System.Random;
 public class CarAgentTrainer : MonoBehaviour
 {
     [SerializeField] private TrainingParameters _parameters;
-
     [SerializeField] private GameObject _carAgentPrefab;
-
-    [SerializeField] private Transform _spawnPoint;
-
-    [SerializeField] private float _averageSpeedFitnessMultiplier;
-
+    [SerializeField] private float _finishingPositionBonus;
     [SerializeField] private GraphElement _graph;
+    [SerializeField] private int _maxGenerations = 999;
+    [SerializeField] private int _stagnantGenerationThreshold = 25;
 
     private Dictionary<AgentTracker, CarAgent> _agentsAndTrackers;
 
@@ -24,26 +22,34 @@ public class CarAgentTrainer : MonoBehaviour
 
     private List<float> _bestFitnessPerGeneration = new List<float>();
 
+    private int _stagnantGenerationCountdown;
+    private bool _stagnated;
+
+    public bool YieldEveryFrame;
+    public bool YieldOnComplete;
+
     private void Start()
     {
         _agentCollection = new AgentCollection(_parameters);
 
         SpawnCarAgents();
+
+        _stagnantGenerationCountdown = _stagnantGenerationThreshold;
     }
 
     private void SpawnCarAgents()
     {
         _bestFitnessPerGeneration.Add(0f);
-        
+
         _agentsAndTrackers = new Dictionary<AgentTracker, CarAgent>();
 
         foreach (AgentTracker agentTracker in _agentCollection.AgentTrackers)
         {
-            CarAgent carAgent = Instantiate(_carAgentPrefab, _spawnPoint.position, Quaternion.identity, transform).GetComponent<CarAgent>();
+            CarAgent carAgent = Instantiate(_carAgentPrefab, TrackManager.Instance.CurrentTrack.StartTransform.position, Quaternion.identity, transform).GetComponent<CarAgent>();
             carAgent.gameObject.name = $"{_carAgentPrefab.name}_{_agentsAndTrackers.Count}";
 
-            carAgent.transform.position = _spawnPoint.position;
-            carAgent.transform.rotation = Quaternion.identity;
+            carAgent.transform.position = TrackManager.Instance.CurrentTrack.StartTransform.position;
+            carAgent.transform.rotation = TrackManager.Instance.CurrentTrack.StartTransform.rotation;
 
             carAgent.ResetAgent();
             carAgent.InitialiseGraphics(agentTracker.perceptron.Seed);
@@ -53,69 +59,109 @@ public class CarAgentTrainer : MonoBehaviour
 
         UserInterface.Instance.UpdateText(0, 0);
         _graph.Initialise("Fitness Graph", "Generation", 10, "Fitness", 10);
+
+        StartCoroutine(TrainingCoroutine());
     }
 
-    private void FixedUpdate()
+    private IEnumerator TrainingCoroutine()
     {
-        float timeDelta = Time.fixedDeltaTime;
+        yield return new WaitForSeconds(0.5f);
 
-        int completedAgentsCounter = 0;
-
-        foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+        while (_generationIndex < _maxGenerations)
         {
-            carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
+            HashSet<AgentTracker> completedTrackers = new HashSet<AgentTracker>();
+            List<AgentTracker> finishedTrackers = new List<AgentTracker>();
 
-            if (carAgent.Crashed || carAgent.Finished)
+            while (completedTrackers.Count < _agentsAndTrackers.Count)
             {
-                completedAgentsCounter++;
-                continue;
+                foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+                {
+                    carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
+
+                    if (completedTrackers.Contains(tracker))
+                        continue;
+
+                    if (carAgent.State is CarAgent.AgentState.Crashed or CarAgent.AgentState.Timeout or CarAgent.AgentState.Finished)
+                    {
+                        completedTrackers.Add(tracker);
+
+                        if (carAgent.State == CarAgent.AgentState.Finished)
+                            finishedTrackers.Add(tracker);
+
+                        if (YieldOnComplete)
+                            yield return null;
+
+                        continue;
+                    }
+
+                    List<float> inputActivations = new List<float>();
+
+                    inputActivations.AddRange(carAgent.GetViewRayDistances());
+                    inputActivations.Add(carAgent.SteeringInput);
+                    inputActivations.Add(carAgent.SpeedNormalised);
+
+                    tracker.perceptron.SetInputActivations(inputActivations.ToArray());
+
+                    tracker.perceptron.ProcessInputActivations();
+
+                    float[] outputActivations = tracker.perceptron.GetOutputActivations();
+
+                    carAgent.SetSteering(outputActivations[0]);
+                    carAgent.SetThrottle(outputActivations[1]);
+
+                    carAgent.UpdateWithTime(0.015f);
+
+                    tracker.fitness = carAgent.TrackProgress;
+                }
+
+                Physics2D.SyncTransforms();
+                Physics2D.Simulate(0.02f);
+
+                if (YieldEveryFrame)
+                    yield return new WaitForFixedUpdate();
             }
 
-            List<float> inputActivations = new List<float>();
+            yield return new WaitForSeconds(0.1f);
 
-            inputActivations.AddRange(carAgent.GetViewRayDistances());
-            inputActivations.Add(carAgent.SteeringInput);
-            inputActivations.Add(carAgent.SpeedNormalised);
-
-            tracker.perceptron.SetInputActivations(inputActivations.ToArray());
-
-            tracker.perceptron.ProcessInputActivations();
-
-            float[] outputActivations = tracker.perceptron.GetOutputActivations();
-
-            carAgent.SetSteering(outputActivations[0]);
-            carAgent.SetThrottle(outputActivations[1]);
-
-            carAgent.UpdateWithTime(timeDelta);
-
-            tracker.fitness = carAgent.TrackProgress;
-        }
-
-        // All agents have completed so time for a new generation
-        if (completedAgentsCounter == _agentsAndTrackers.Count)
-        {
-            // Give each agent that finishes a bonus to make then go round the track faster
-            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            // TRAINING SESSION FINISHED - All agents have completed so time for a new generation
+            
+            // Give each agent that finishes a bonus based on their position to make then go round the track faster
+            for (int i = 0; i < finishedTrackers.Count; i++)
             {
-                carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
-
-                if (carAgent.Finished)
-                {
-                    tracker.fitness += (carAgent.DistanceTravelled / carAgent.TimeAlive) * _averageSpeedFitnessMultiplier;
-                }
+                finishedTrackers[i].fitness += _finishingPositionBonus / (i + 1);
             }
 
             float maxFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
+
+            // Check if the simulation has stagnated
+            if (_generationIndex > 20 && maxFitness <= _bestFitnessPerGeneration[^1])
+                _stagnantGenerationCountdown--;
+            else
+                _stagnantGenerationCountdown = _stagnantGenerationThreshold;
+
+            _stagnated = _stagnantGenerationCountdown <= 0;
+
+            // Log the best fitness text
             _bestFitnessPerGeneration.Add(maxFitness);
+            _generationIndex++;
 
-            UserInterface.Instance.UpdateText(_generationIndex++, maxFitness);
+            if (_stagnated)
+            {
+                TrackManager.Instance.IncrementTrack();
+                _stagnantGenerationCountdown = _stagnantGenerationThreshold;
+                _stagnated = false;
+            }
 
+            // Log the best fitness graph
             List<Vector2> fitnessData = new List<Vector2>();
             for (int i = 0; i < _bestFitnessPerGeneration.Count; i++)
                 fitnessData.Add(new Vector2(i, _bestFitnessPerGeneration[i]));
 
             _graph.SetBodyData(fitnessData);
 
+            UserInterface.Instance.UpdateText(_generationIndex, maxFitness);
+
+            // Cull and repopulate
             _agentCollection.ApplySurvivalCurve();
             _agentCollection.Repopulate();
 
@@ -124,11 +170,10 @@ public class CarAgentTrainer : MonoBehaviour
             {
                 carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
 
-                carAgent.transform.position = _spawnPoint.position;
-                carAgent.transform.rotation = Quaternion.identity;
+                carAgent.transform.position = TrackManager.Instance.CurrentTrack.StartTransform.position;
+                carAgent.transform.rotation = TrackManager.Instance.CurrentTrack.StartTransform.rotation;
 
                 carAgent.ResetAgent();
-
             }
         }
     }
@@ -236,7 +281,7 @@ public class AgentCollection
             AgentTracker parentTwo = SelectParent(survivingTrackers, parentOne);
 
             // Export genomes
-            SerialPerceptron genomeOne = parentOne.perceptron.ExportPerceptron();            
+            SerialPerceptron genomeOne = parentOne.perceptron.ExportPerceptron();
             SerialPerceptron genomeTwo = parentTwo.perceptron.ExportPerceptron();
 
             CrossoverGenomes(genomeOne, genomeTwo);

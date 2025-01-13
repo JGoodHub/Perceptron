@@ -53,11 +53,11 @@ MonoBehaviour:
   - Angle: -70
     MaxDistance: 2
   - Angle: -30
-    MaxDistance: 3
-  - Angle: 0
     MaxDistance: 4
+  - Angle: 0
+    MaxDistance: 6
   - Angle: 30
-    MaxDistance: 3
+    MaxDistance: 4
   - Angle: 70
     MaxDistance: 2
   _accelerationCurve:

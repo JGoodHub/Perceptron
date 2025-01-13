@@ -44,9 +44,13 @@ public class TrackCircuit : MonoBehaviour, ITrainingEnvironment
         return _trackPolyLine.GetDistanceAlongEdge(target.position);
     }
 
+    public float GetNormalisedDistanceAlongTrack(Transform target)
+    {
+        return Mathf.Clamp01(_trackPolyLine.GetDistanceAlongEdge(target.position) / _trackPolyLine.GetEdgeLength());
+    }
+
     public List<Vector3> GetTrackPath()
     {
         return _trackTiles.Select(tile => tile.transform.position).ToList();
     }
-
 }

@@ -132,8 +132,8 @@ public class CarAgent : MonoBehaviour
 
         _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
-        _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetDistanceAlongTrack(transform));
-
+        _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
+        
         if (_currentSpeed < 0.3f)
             _toSlowCountdown -= deltaTime;
         else

@@ -136,7 +136,8 @@ public class CarAgentTrainer : MonoBehaviour
             // Give each agent that finishes a bonus based on their position to make then go round the track faster
             for (int i = 0; i < finishedTrackers.Count; i++)
             {
-                finishedTrackers[i].fitness += _finishingPositionBonus / (i + 1);
+                float timeAlive = _agentsAndTrackers.First(item => item.Key == finishedTrackers[i]).Value.TimeAlive;
+                finishedTrackers[i].fitness = 100 + (50 - timeAlive);
             }
 
             float maxFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);

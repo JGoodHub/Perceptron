@@ -10,7 +10,6 @@ public class CarAgentTrainer : MonoBehaviour
 {
     [SerializeField] private TrainingParameters _parameters;
     [SerializeField] private GameObject _carAgentPrefab;
-    [SerializeField] private float _finishingPositionBonus;
     [SerializeField] private GraphElement _graph;
     [SerializeField] private int _maxGenerations = 999;
     [SerializeField] private int _stagnantGenerationThreshold = 25;
@@ -43,6 +42,7 @@ public class CarAgentTrainer : MonoBehaviour
 
         _agentsAndTrackers = new Dictionary<AgentTracker, CarAgent>();
 
+        int depthIndex = 1;
         foreach (AgentTracker agentTracker in _agentCollection.AgentTrackers)
         {
             CarAgent carAgent = Instantiate(_carAgentPrefab, trainingEnvironment.StartTransform.position, Quaternion.identity, transform).GetComponent<CarAgent>();
@@ -52,13 +52,15 @@ public class CarAgentTrainer : MonoBehaviour
             carAgent.transform.rotation = trainingEnvironment.StartTransform.rotation;
 
             carAgent.ResetAgent();
-            carAgent.InitialiseGraphics(agentTracker.perceptron.Seed);
+            carAgent.InitialiseGraphics(agentTracker.perceptron.Seed, depthIndex);
 
             _agentsAndTrackers.Add(agentTracker, carAgent);
+
+            depthIndex++;
         }
 
         UserInterface.Instance.UpdateText(0, 0);
-        _graph.Initialise("Fitness Graph", "Generation", 10, "Fitness", 10);
+        _graph.Initialise("Fitness Graph", "Generation", 10, "Fitness", 20);
 
         StartCoroutine(TrainingCoroutine());
     }
@@ -76,7 +78,7 @@ public class CarAgentTrainer : MonoBehaviour
                 _bestFitness.Add(trainingEnvironment, new List<float>());
                 _bestFitness[trainingEnvironment].Add(0f);
             }
-            
+
             HashSet<AgentTracker> completedTrackers = new HashSet<AgentTracker>();
             List<AgentTracker> finishedTrackers = new List<AgentTracker>();
 
@@ -114,8 +116,7 @@ public class CarAgentTrainer : MonoBehaviour
 
                     float[] outputActivations = tracker.perceptron.GetOutputActivations();
 
-                    carAgent.SetSteering(outputActivations[0]);
-                    carAgent.SetThrottle(outputActivations[1]);
+                    carAgent.SetControls(outputActivations[0], outputActivations[1], outputActivations[2]);
 
                     carAgent.UpdateWithTime(0.015f);
 

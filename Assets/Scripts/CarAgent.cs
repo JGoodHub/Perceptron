@@ -25,14 +25,16 @@ public class CarAgent : MonoBehaviour
 
     [SerializeField] private List<ViewRay> _viewRays;
 
-    [SerializeField] private AnimationCurve _accelerationCurve;
-    [SerializeField] private float _maxAcceleration;
+    [SerializeField] private float _acceleration;
+    [SerializeField] private float _decceleration;
+    [Space]
     [SerializeField] private float _maxSpeed;
     [SerializeField] private float _maxSteering;
     [Space]
     [SerializeField] private CarGraphicsSwapper _graphics;
 
     private float _throttleInput;
+    private float _brakingInput;
     private float _steeringInput;
 
     private float _currentSpeed;
@@ -49,16 +51,17 @@ public class CarAgent : MonoBehaviour
     public float SpeedNormalised => _currentSpeed / _maxSpeed;
 
     public float SteeringInput => _steeringInput;
-    
+
     public float TimeAlive => _timeAlive;
 
     public float TrackProgress => _trackProgress;
 
     public float DistanceTravelled => _distanceTravelled;
 
-    public void InitialiseGraphics(int seed)
+    public void InitialiseGraphics(int seed, int depth)
     {
         _graphics.SelectColourFromSeed(seed);
+        _graphics.SetDepth(depth);
     }
 
     public void ResetAgent()
@@ -68,7 +71,7 @@ public class CarAgent : MonoBehaviour
         _distanceTravelled = 0f;
 
         _state = AgentState.Alive;
-            
+
         _currentSpeed = 0;
         _currentTurning = 0;
 
@@ -80,16 +83,13 @@ public class CarAgent : MonoBehaviour
         _graphics.ResetPositionHistory();
     }
 
-    public void SetThrottle(float throttle)
-    {
-        _throttleInput = throttle;
-    }
-
-    public void SetSteering(float steering)
+    public void SetControls(float steering, float throttle, float braking)
     {
         _steeringInput = steering;
+        _throttleInput = throttle;
+        _brakingInput = braking;
     }
-
+    
     public List<float> GetViewRayDistances()
     {
         List<float> distances = new List<float>();
@@ -116,11 +116,9 @@ public class CarAgent : MonoBehaviour
     {
         if (_state != AgentState.Alive)
             return;
-        
-        float accelerationAtSpeed = _accelerationCurve.Evaluate(_currentSpeed / _maxSpeed);
-        
-        _currentSpeed += (_maxAcceleration * accelerationAtSpeed) * _throttleInput;
-        _currentSpeed -= (_maxSpeed * deltaTime) * (1f - _throttleInput);
+
+        _currentSpeed += (_acceleration * _throttleInput);
+        _currentSpeed -= (_decceleration * _brakingInput);
 
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0, _maxSpeed);
 
@@ -133,7 +131,7 @@ public class CarAgent : MonoBehaviour
         _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
         _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
-        
+
         if (_currentSpeed < 0.3f)
             _toSlowCountdown -= deltaTime;
         else
@@ -145,6 +143,7 @@ public class CarAgent : MonoBehaviour
         }
 
         _graphics.LogPosition();
+        _graphics.UpdateLights(_throttleInput, _brakingInput);
     }
 
     private void OnTriggerEnter2D(Collider2D other)

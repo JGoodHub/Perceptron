@@ -100,7 +100,7 @@ MonoBehaviour:
   _acceleration: 1.25
   _deceleration: 2
   _resistance: 0.34
-  _maxSpeed: 4
+  _maxSpeed: 4.5
   _speedSteeringCurve:
     serializedVersion: 2
     m_Curve:
@@ -124,7 +124,7 @@ MonoBehaviour:
       outWeight: 0.33333334
     - serializedVersion: 3
       time: 4
-      value: 60
+      value: 50
       inSlope: -26.342983
       outSlope: -26.342983
       tangentMode: 0

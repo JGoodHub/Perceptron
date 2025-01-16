@@ -59,8 +59,8 @@ public class CarAgentTrainer : MonoBehaviour
             depthIndex++;
         }
 
-        UserInterface.Instance.UpdateText(0, 0);
-        _graph.Initialise("Fitness Graph", "Generation", 10, "Fitness", 20);
+        // UserInterface.Instance.UpdateText(0, 0);
+        // _graph.Initialise("Fitness Graph", "Generation", 10, "Fitness", 20);
 
         StartCoroutine(TrainingCoroutine());
     }
@@ -162,13 +162,13 @@ public class CarAgentTrainer : MonoBehaviour
             }
 
             // Log the best fitness graph
-            List<Vector2> fitnessData = new List<Vector2>();
-            for (int i = 0; i < _bestFitness[trainingEnvironment].Count; i++)
-                fitnessData.Add(new Vector2(i, _bestFitness[trainingEnvironment][i]));
+            // List<Vector2> fitnessData = new List<Vector2>();
+            // for (int i = 0; i < _bestFitness[trainingEnvironment].Count; i++)
+            //     fitnessData.Add(new Vector2(i, _bestFitness[trainingEnvironment][i]));
+            //
+            // _graph.SetBodyData(fitnessData);
 
-            _graph.SetBodyData(fitnessData);
-
-            UserInterface.Instance.UpdateText(_generationIndex, maxFitness);
+            //UserInterface.Instance.UpdateText(_generationIndex, maxFitness);
 
             // Cull and repopulate
             _agentCollection.ApplySurvivalCurve();

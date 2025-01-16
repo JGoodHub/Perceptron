@@ -39,7 +39,7 @@ public class CarGraphicsSwapper : MonoBehaviour
 
     public void SetDepth(int depth)
     {
-        _root.localPosition = new Vector3(0, -depth, 0);
+        _root.localPosition = new Vector3(0, 0, -depth);
     }
 
     public void SelectColourFromSeed(int seed)

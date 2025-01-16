@@ -80,7 +80,7 @@ namespace NeuralNet
 
         public float[] GetOutputActivations()
         {
-            Layer lastLayer = _layers[_layers.Length - 1];
+            Layer lastLayer = _layers[^1];
             float[] outputActivations = new float[lastLayer.Neurons.Length];
 
             for (int i = 0; i < lastLayer.Neurons.Length; i++)

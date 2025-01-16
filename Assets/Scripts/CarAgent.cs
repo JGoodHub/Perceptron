@@ -25,13 +25,15 @@ public class CarAgent : MonoBehaviour
 
     [SerializeField] private List<ViewRay> _viewRays;
 
-    [SerializeField] private float _acceleration;
-    [SerializeField] private float _decceleration;
+    [SerializeField] private float _acceleration = 1;
+    [SerializeField] private float _deceleration = 2;
+    [SerializeField] private float _resistance = 0.5f;
     [Space]
-    [SerializeField] private float _maxSpeed;
-    [SerializeField] private float _maxSteering;
+    [SerializeField] private float _maxSpeed = 4;
+    [SerializeField] private AnimationCurve _speedSteeringCurve;
     [Space]
     [SerializeField] private CarGraphicsSwapper _graphics;
+    [SerializeField] private bool _playerControlled;
 
     private float _throttleInput;
     private float _brakingInput;
@@ -89,7 +91,7 @@ public class CarAgent : MonoBehaviour
         _throttleInput = throttle;
         _brakingInput = braking;
     }
-    
+
     public List<float> GetViewRayDistances()
     {
         List<float> distances = new List<float>();
@@ -117,12 +119,13 @@ public class CarAgent : MonoBehaviour
         if (_state != AgentState.Alive)
             return;
 
-        _currentSpeed += (_acceleration * _throttleInput);
-        _currentSpeed -= (_decceleration * _brakingInput);
+        _currentSpeed += (_acceleration * _throttleInput * deltaTime);
+        _currentSpeed -= (_deceleration * _brakingInput * deltaTime);
+        _currentSpeed -= (_resistance * deltaTime);
 
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0, _maxSpeed);
 
-        _currentTurning = _maxSteering * ((_steeringInput - 0.5f) * 2f);
+        _currentTurning = _speedSteeringCurve.Evaluate(_currentSpeed) * ((_steeringInput - 0.5f) * 2f);
         transform.Rotate(Vector3.forward, _currentTurning * -1f * deltaTime);
 
         Vector3 translationVector = transform.up * (_currentSpeed * deltaTime);
@@ -132,14 +135,21 @@ public class CarAgent : MonoBehaviour
         _timeAlive += deltaTime;
         _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
 
-        if (_currentSpeed < 0.3f)
-            _toSlowCountdown -= deltaTime;
-        else
-            _toSlowCountdown = 2f;
-
-        if (TrackManager.Singleton.CurrentTrack.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
+        if (_playerControlled == false)
         {
-            _state = AgentState.Timeout;
+            if (_currentSpeed < 0.3f)
+            {
+                _toSlowCountdown -= deltaTime;
+            }
+            else
+            {
+                _toSlowCountdown = 2f;
+            }
+
+            if (TrackManager.Singleton.CurrentTrack.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
+            {
+                _state = AgentState.Timeout;
+            }
         }
 
         _graphics.LogPosition();

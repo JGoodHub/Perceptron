@@ -2399,7 +2399,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 1
   far clip plane: 1000
   field of view: 60
   orthographic: 1
@@ -2428,11 +2428,10 @@ Transform:
   m_GameObject: {fileID: 936655505}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 7.67, y: 6.1, z: -10}
+  m_LocalPosition: {x: 7.67, y: 6.1, z: -200}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1277072926}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &954623051
@@ -2952,6 +2951,63 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4276885413727043629, guid: 9537c58bffe9cd547ad5a63ffcb836dc, type: 3}
   m_PrefabInstance: {fileID: 1189791840}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1216879299
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 331614762967316086, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_Name
+      value: CarAgent_Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.254
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 6.218
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 331614762967316087, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f6c3bc026d457654591acf2c2fb59bee, type: 3}
 --- !u!1 &1226014020
 GameObject:
   m_ObjectHideFlags: 0
@@ -3197,11 +3253,11 @@ Transform:
   m_GameObject: {fileID: 1277072925}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 11}
+  m_LocalPosition: {x: 7.67, y: 6.1, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 936655508}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &1277072927
 SpriteRenderer:
@@ -4624,7 +4680,7 @@ MonoBehaviour:
   _parameters:
     _seed: 1997
     _neuronCounts: 080000000e0000000800000003000000
-    _populationCount: 100
+    _populationCount: 80
     _survivalChanceCurve:
       serializedVersion: 2
       m_Curve:
@@ -6228,6 +6284,8 @@ SceneRoots:
   m_Roots:
   - {fileID: 936655508}
   - {fileID: 1675608061}
+  - {fileID: 1277072926}
   - {fileID: 1855126519}
-  - {fileID: 729040019}
   - {fileID: 2096839091}
+  - {fileID: 729040019}
+  - {fileID: 1216879299}

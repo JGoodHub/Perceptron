@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: WindowsConfigurationsCollection
   m_EditorClassIdentifier: 
   _windowConfigurations:
-  - {fileID: 11400000, guid: cbd324b6811d4474d812f54d537c0f54, type: 2}
+  - {fileID: 11400000, guid: c1bd45a71936a314aa1e047a90f18511, type: 2}

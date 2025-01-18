@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using GoodHub.Core.Runtime;
 using NeuralNet;
 using UnityEngine;
@@ -83,7 +84,8 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     private IEnumerator TrainingCoroutine()
     {
-        yield return new WaitForSeconds(0.4f);
+        //yield return new WaitForSeconds(0.4f);
+        yield return null;
 
         while (_generationIndex < _maxGenerations)
         {
@@ -99,6 +101,9 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
             while (completedTrackers.Count < _agentsAndTrackers.Count)
             {
+                float startTimestamp = Time.realtimeSinceStartup;
+                //Debug.Log($"Pre Agent Processing Timestamp: {startTimestamp}");
+
                 foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
                 {
                     carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
@@ -125,27 +130,25 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                     inputActivations.Add(carAgent.SteeringInput);
                     inputActivations.Add(carAgent.SpeedNormalised);
 
-                    tracker.perceptron.SetInputActivations(inputActivations.ToArray());
-
-                    tracker.perceptron.ProcessInputActivations();
-
-                    float[] outputActivations = tracker.perceptron.GetOutputActivations();
+                    float[] outputActivations = tracker.perceptron.ProcessInputsToOutputs(inputActivations.ToArray());
 
                     carAgent.SetControls(outputActivations[0], outputActivations[1], outputActivations[2]);
 
-                    carAgent.UpdateWithTime(0.015f);
+                    carAgent.UpdateWithTime(Time.fixedDeltaTime);
 
                     tracker.fitness = carAgent.TrackProgress;
                 }
 
+                Debug.Log($"Pre Agent Processing Duration: {(Time.realtimeSinceStartup - startTimestamp) * 1000}ms");
+
                 Physics2D.SyncTransforms();
-                Physics2D.Simulate(0.02f);
+                Physics2D.Simulate(Time.fixedDeltaTime);
 
                 if (YieldEveryFrame)
                     yield return new WaitForFixedUpdate();
             }
 
-            yield return new WaitForSeconds(0.1f);
+            yield return null;
 
             // TRAINING SESSION FINISHED - All agents have completed so time for a new generation
 

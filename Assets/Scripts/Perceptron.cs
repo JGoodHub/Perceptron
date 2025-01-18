@@ -72,10 +72,25 @@ namespace NeuralNet
             }
         }
 
+        public float[] ProcessInputsToOutputs(float[] activations)
+        {
+            SetInputActivations(activations);
+            ProcessInputActivations();
+            return GetOutputActivations();
+        }
+
         public void SetInputActivations(float[] activations)
         {
             for (int a = 0; a < activations.Length; a++)
                 _layers[0].Neurons[a].Activation = activations[a];
+        }
+
+        public void ProcessInputActivations()
+        {
+            float[] inputActivations = _layers[0].GetActivations();
+
+            for (int i = 1; i < _layers.Length; i++)
+                inputActivations = _layers[i].ComputeActivations(inputActivations);
         }
 
         public float[] GetOutputActivations()
@@ -108,14 +123,6 @@ namespace NeuralNet
             }
 
             return maxIndex;
-        }
-
-        public void ProcessInputActivations()
-        {
-            float[] inputActivations = _layers[0].GetActivations();
-
-            for (int i = 1; i < _layers.Length; i++)
-                inputActivations = _layers[i].ComputeActivations(inputActivations);
         }
 
         public SerialPerceptron ExportPerceptron()

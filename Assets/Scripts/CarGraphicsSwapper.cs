@@ -30,7 +30,9 @@ public class CarGraphicsSwapper : MonoBehaviour
     [SerializeField] private SpriteRenderer _targetImage;
     [SerializeField] private LineRenderer _lineRenderer;
 
-    [SerializeField] private GameObject _accelerationLight;
+    [SerializeField] private GameObject _lightAccelerationLight;
+    [SerializeField] private GameObject _mediumAccelerationLight;
+    [SerializeField] private GameObject _heavyAccelerationLight;
     [SerializeField] private GameObject _brakeLights;
 
     [SerializeField] private ColourSettings[] _colourSettings;
@@ -73,7 +75,10 @@ public class CarGraphicsSwapper : MonoBehaviour
 
     public void UpdateLights(float throttleInput, float brakingInput)
     {
-        _accelerationLight.SetActive(throttleInput >= 0.1f);
-        _brakeLights.SetActive(brakingInput > 0.2f);
+        _lightAccelerationLight.SetActive(throttleInput >= 0f && throttleInput <= 0.35f);
+        _mediumAccelerationLight.SetActive(throttleInput > 0.35f && throttleInput < 0.8f);
+        _heavyAccelerationLight.SetActive(throttleInput >= 0.8f);
+        
+        _brakeLights.SetActive(brakingInput >= 0.1f);
     }
 }

@@ -3580,7 +3580,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 0.1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -3599,31 +3599,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _parameters:
     _seed: 1997
-    _neuronCounts: 080000000e0000000800000003000000
-    _populationCount: 80
+    _neuronCounts: 09000000120000000c0000000900000003000000
+    _populationCount: 120
     _survivalChanceCurve:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 0.05
-        value: 0
         inSlope: -0
-        outSlope: 0.14787939
+        outSlope: 0.4933805
         tangentMode: 5
         weightedMode: 0
         inWeight: 0.33333334
-        outWeight: 0.08241499
+        outWeight: 0.048764933
       - serializedVersion: 3
-        time: 0.9
+        time: 0.925
         value: 1
         inSlope: 1.7006475
         outSlope: 0
@@ -3643,13 +3634,13 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    _crossoverRate: 0.6
+    _crossoverRate: 0.5
     _mutationProbability: 0.02
     _mutationRange: 6
   _carAgentPrefab: {fileID: 331614762967316086, guid: f8d0369918639a142bc3167385d3025e, type: 3}
   _maxGenerations: 99999
-  _stagnantGenerationThreshold: 60
-  YieldEveryFrame: 0
+  _stagnantGenerationThreshold: 40
+  YieldEveryFrame: 1
   YieldEveryAgent: 1
 --- !u!1001 &1874132938
 PrefabInstance:

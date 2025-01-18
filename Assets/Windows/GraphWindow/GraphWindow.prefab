@@ -823,7 +823,7 @@ MonoBehaviour:
     m_Font: {fileID: 12800000, guid: ce804404ced0444589bc780b47fccc14, type: 3}
     m_FontSize: 18
     m_FontStyle: 0
-    m_BestFit: 0
+    m_BestFit: 1
     m_MinSize: 0
     m_MaxSize: 30
     m_Alignment: 3

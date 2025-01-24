@@ -10,7 +10,7 @@ public class TrackCircuit : MonoBehaviour, ITrainingEnvironment
     [SerializeField] private Transform _startTransform;
     [SerializeField] private List<TrackTile> _trackTiles;
 
-    private CurvedPath _trackPolyLine;
+    private PointsCurve _trackPath;
 
     public Transform StartTransform => _startTransform;
 
@@ -18,7 +18,7 @@ public class TrackCircuit : MonoBehaviour, ITrainingEnvironment
     {
         Vector3[] controlPoints = _trackTiles.Select(tile => tile.transform.position).ToArray();
 
-        _trackPolyLine = new CurvedPath(controlPoints, false);
+        _trackPath = new PointsCurve(controlPoints, Vector3.back);
     }
 
     public bool IsAlignedToTrack(Transform target)
@@ -39,14 +39,9 @@ public class TrackCircuit : MonoBehaviour, ITrainingEnvironment
         return -1;
     }
 
-    public float GetDistanceAlongTrack(Transform target)
-    {
-        return _trackPolyLine.GetDistanceAlongEdge(target.position);
-    }
-
     public float GetNormalisedDistanceAlongTrack(Transform target)
     {
-        return Mathf.Clamp01(_trackPolyLine.GetDistanceAlongEdge(target.position) / _trackPolyLine.GetEdgeLength());
+        return Mathf.Clamp01(_trackPath.GetDistanceAlongCurve(target.position) / _trackPath.WorldLength());
     }
 
     public List<Vector3> GetTrackPath()

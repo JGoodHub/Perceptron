@@ -2,17 +2,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using GoodHub.Core.Runtime;
-using GoodHub.Core.Runtime.Utils.Observables;
+using GoodHub.Core.Runtime.Observables;
 using UnityEngine;
 
 public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 {
     [SerializeField] private TrainingParameters _parameters;
     [SerializeField] private GameObject _carAgentPrefab;
-    [SerializeField] private int _maxGenerations = 999;
-    [SerializeField] private int _stagnantGenerationThreshold = 25;
+    [SerializeField] private int _maxGenerations = 9999;
+    [SerializeField] private int _stagnantGenerationThreshold = 540;
 
     private Dictionary<AgentTracker, CarAgent> _agentsAndTrackers;
 
@@ -27,7 +26,13 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
     public bool YieldEveryFrame;
     public bool YieldEveryAgent;
 
+    public ObservableBool OnlyShowBestAgents = false;
+
     private Dictionary<ITrainingEnvironment, List<Vector2>> _fitnessData = new Dictionary<ITrainingEnvironment, List<Vector2>>();
+
+    private List<AgentTracker> _lastGenerationStandings = new List<AgentTracker>();
+
+    private CarAgent _currentBestAgent;
 
     public event Action OnFitnessDataUpdated;
 
@@ -45,6 +50,8 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
         }
     }
 
+    public int StagnantGenerationCountdown => _stagnantGenerationCountdown;
+
     private void Start()
     {
         _agentCollection = new AgentCollection(_parameters);
@@ -52,6 +59,8 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
         SpawnCarAgents();
 
         _stagnantGenerationCountdown = _stagnantGenerationThreshold;
+
+        OnlyShowBestAgents.OnValueChanged += UpdateAgentsVisibility;
     }
 
     private void SpawnCarAgents()
@@ -83,7 +92,6 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     private IEnumerator TrainingCoroutine()
     {
-        //yield return new WaitForSeconds(0.4f);
         yield return null;
 
         while (_generationIndex < _maxGenerations)
@@ -98,11 +106,14 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
             HashSet<AgentTracker> completedTrackers = new HashSet<AgentTracker>();
             List<AgentTracker> finishedTrackers = new List<AgentTracker>();
 
+            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            {
+                carTrackerPair.Value.SetBestAgent(carTrackerPair.Value == _currentBestAgent);
+            }
+
             while (completedTrackers.Count < _agentsAndTrackers.Count)
             {
-                float startTimestamp = Time.realtimeSinceStartup;
-                //Debug.Log($"Pre Agent Processing Timestamp: {startTimestamp}");
-
+                // Update the perceptrons of all active agents
                 foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
                 {
                     carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
@@ -113,6 +124,8 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                     if (carAgent.State is CarAgent.AgentState.Crashed or CarAgent.AgentState.Timeout or CarAgent.AgentState.Finished)
                     {
                         completedTrackers.Add(tracker);
+
+                        carAgent.HandleAgentCompleted();
 
                         if (carAgent.State == CarAgent.AgentState.Finished)
                             finishedTrackers.Add(tracker);
@@ -126,8 +139,11 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                     List<float> inputActivations = new List<float>();
 
                     inputActivations.AddRange(carAgent.GetViewRayDistances());
+                    inputActivations.Add(carAgent.ThrottleInput);
+                    inputActivations.Add(carAgent.BrakingInput);
                     inputActivations.Add(carAgent.SteeringInput);
                     inputActivations.Add(carAgent.SpeedNormalised);
+                    inputActivations.Add(carAgent.TurningNormalised);
 
                     float[] outputActivations = tracker.perceptron.ProcessInputsToOutputs(inputActivations.ToArray());
 
@@ -138,13 +154,12 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                     tracker.fitness = carAgent.TrackProgress;
                 }
 
-                Debug.Log($"Pre Agent Processing Duration: {(Time.realtimeSinceStartup - startTimestamp) * 1000}ms");
-
                 Physics2D.SyncTransforms();
                 Physics2D.Simulate(Time.fixedDeltaTime);
 
                 if (YieldEveryFrame)
                     yield return new WaitForFixedUpdate();
+                //yield return null;
             }
 
             yield return null;
@@ -154,11 +169,21 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
             // Give each agent that finishes a bonus based on their position to make then go round the track faster
             for (int i = 0; i < finishedTrackers.Count; i++)
             {
-                float timeAlive = _agentsAndTrackers.First(item => item.Key == finishedTrackers[i]).Value.TimeAlive;
-                finishedTrackers[i].fitness = 100 + (50 - timeAlive);
+                CarAgent carAgent = _agentsAndTrackers.First(item => item.Key == finishedTrackers[i]).Value;
+                float timeAlive = carAgent.TimeAlive;
+                float penalty = carAgent.Penalty;
+                finishedTrackers[i].fitness = 100 + (50 - timeAlive) - penalty;
             }
 
-            float maxFitness = _agentCollection.AgentTrackers.Max(tracker => tracker.fitness);
+            float maxFitness = 0;
+            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            {
+                if (carTrackerPair.Key.fitness < maxFitness)
+                    continue;
+
+                maxFitness = carTrackerPair.Key.fitness;
+                _currentBestAgent = carTrackerPair.Value;
+            }
 
             // Check if the simulation has stagnated
             if (maxFitness <= _fitnessData[trainingEnvironment][^1].y)
@@ -182,13 +207,15 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
             _fitnessData[trainingEnvironment].Add(new Vector2(_generationIndex, maxFitness));
             OnFitnessDataUpdated?.Invoke();
 
+            _lastGenerationStandings = _agentCollection.AgentTrackers.OrderByDescending(agent => agent.fitness).ToList();
+
             // Cull and repopulate
             _agentCollection.ApplySurvivalCurve();
             _agentCollection.Repopulate();
 
             if (_stagnated)
             {
-                trainingEnvironment = TrackManager.Singleton.CurrentTrack;
+                _activeTrainingEnvironment = trainingEnvironment = TrackManager.Singleton.CurrentTrack;
                 _stagnated = false;
             }
 
@@ -202,11 +229,12 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
                 carAgent.ResetAgent();
             }
+
+            UpdateAgentsVisibility(OnlyShowBestAgents);
         }
     }
-}
 
-    private void OnlyShowBestAgents(bool onlyShowBestAgents)
+    private void UpdateAgentsVisibility(bool onlyShowBestAgents)
     {
         // Get the fitness of the third-best agent then use it to show all
         // agents at or above that fitness, i.e. the top 3 performers
@@ -214,15 +242,22 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
         if (onlyShowBestAgents)
         {
-            float lowerBoundFitness = _agentsAndTrackers
-                .Keys
-                .OrderByDescending(tracker => tracker.fitness)
-                .Take(3)
-                .Last().fitness;
+            // float lowerBoundFitness = _agentsAndTrackers
+            //     .Keys
+            //     .OrderByDescending(tracker => tracker.fitness)
+            //     .Take(3)
+            //     .Last().fitness;
+            //
+            // foreach (AgentTracker agentTracker in _agentsAndTrackers.Keys)
+            // {
+            //     _agentsAndTrackers[agentTracker].Graphics.SetVisible(agentTracker.fitness >= lowerBoundFitness);
+            // }
+
+            List<AgentTracker> bestAgents = _lastGenerationStandings.Take(Mathf.Clamp(_parameters.PopulationCount / 10, 1, 10)).ToList();
 
             foreach (AgentTracker agentTracker in _agentsAndTrackers.Keys)
             {
-                _agentsAndTrackers[agentTracker].Graphics.SetVisible(agentTracker.fitness >= lowerBoundFitness);
+                _agentsAndTrackers[agentTracker].Graphics.SetVisible(bestAgents.Contains(agentTracker));
             }
         }
         else

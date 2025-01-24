@@ -45,20 +45,31 @@ public class CarAgent : MonoBehaviour
     private AgentState _state;
     private float _timeAlive;
     private float _trackProgress;
-    private float _distanceTravelled;
     private float _toSlowCountdown = 2f;
+
+    private bool _isBestAgent = false;
+
+    private float _penalty = 0f;
 
     public AgentState State => _state;
 
-    public float SpeedNormalised => _currentSpeed / _maxSpeed;
+    public float ThrottleInput => _throttleInput;
+
+    public float BrakingInput => _brakingInput;
 
     public float SteeringInput => _steeringInput;
+
+    public float SpeedNormalised => _currentSpeed / _maxSpeed;
+    
+    public float TurningNormalised => _currentSpeed / 120;
 
     public float TimeAlive => _timeAlive;
 
     public float TrackProgress => _trackProgress;
 
-    public float DistanceTravelled => _distanceTravelled;
+    public float Penalty => _penalty;
+
+    public CarGraphicsSwapper Graphics => _graphics;
 
     public void InitialiseGraphics(int seed, int depth)
     {
@@ -70,7 +81,6 @@ public class CarAgent : MonoBehaviour
     {
         _trackProgress = 0f;
         _timeAlive = 0f;
-        _distanceTravelled = 0f;
 
         _state = AgentState.Alive;
 
@@ -81,6 +91,8 @@ public class CarAgent : MonoBehaviour
         _steeringInput = 0;
 
         _toSlowCountdown = 2f;
+
+        _penalty = 0f;
 
         _graphics.ResetPositionHistory();
     }
@@ -131,10 +143,14 @@ public class CarAgent : MonoBehaviour
         Vector3 translationVector = transform.up * (_currentSpeed * deltaTime);
         transform.position += translationVector;
 
-        _distanceTravelled += translationVector.magnitude;
         _timeAlive += deltaTime;
         _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
 
+        if (_throttleInput > 0.15f && _brakingInput > 0.15f)
+        {
+            _penalty += deltaTime;
+        }
+        
         if (_playerControlled == false)
         {
             if (_currentSpeed < 0.3f)
@@ -153,7 +169,12 @@ public class CarAgent : MonoBehaviour
         }
 
         _graphics.LogPosition();
-        _graphics.UpdateLights(_throttleInput, _brakingInput);
+        _graphics.UpdateGraphics(_throttleInput, _brakingInput, _state != AgentState.Alive, _isBestAgent);
+    }
+
+    public void HandleAgentCompleted()
+    {
+        _graphics.UpdateGraphics(_throttleInput, _brakingInput, _state != AgentState.Alive, _isBestAgent);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -192,5 +213,10 @@ public class CarAgent : MonoBehaviour
 
             Gizmos.DrawRay(transform.position, viewRayDirection * contactDistance);
         }
+    }
+
+    public void SetBestAgent(bool isBestAgent)
+    {
+        _isBestAgent = isBestAgent;
     }
 }

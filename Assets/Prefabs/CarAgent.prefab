@@ -89,24 +89,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _viewRays:
-  - Angle: -90
-    MaxDistance: 1.8
-  - Angle: -60
+  - Angle: -80
     MaxDistance: 2
-  - Angle: -30
+  - Angle: -46
     MaxDistance: 4
-  - Angle: -15
+  - Angle: -22
     MaxDistance: 6
   - Angle: 0
     MaxDistance: 8
-  - Angle: 15
+  - Angle: 22
     MaxDistance: 6
-  - Angle: 30
-    MaxDistance: 4
-  - Angle: 60
+  - Angle: 46
     MaxDistance: 2
-  - Angle: 90
-    MaxDistance: 1.8
+  - Angle: 80
+    MaxDistance: 2
   _acceleration: 1.75
   _deceleration: 4
   _resistance: 0.2

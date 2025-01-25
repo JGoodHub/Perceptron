@@ -21,7 +21,7 @@ public class TrackTile : MonoBehaviour
     public bool IsAlignedWithTrack(Transform target)
     {
         Vector2 localDirection = transform.TransformDirection(_forwardDirection);
-        return Vector2.Dot(localDirection, target.up) > -0.34f;
+        return Vector2.Dot(localDirection, target.up) > -0.6f;
     }
 
     public bool InsideBounds(Vector2 position)

@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using GoodHub.Core.Runtime;
 using GoodHub.Core.Runtime.Observables;
 using UnityEngine;
@@ -13,9 +15,9 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
     [SerializeField] private int _maxGenerations = 9999;
     [SerializeField] private int _stagnantGenerationThreshold = 540;
 
-    private Dictionary<AgentTracker, CarAgent> _agentsAndTrackers;
+    //private Dictionary<AgentTracker, CarAgent> _agentsAndTrackers;
 
-    private AgentCollection _agentCollection;
+    private AgentsPool<CarAgent> _agentsPool;
     private int _generationIndex;
 
     private int _stagnantGenerationCountdown;
@@ -30,7 +32,7 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     private Dictionary<ITrainingEnvironment, List<Vector2>> _fitnessData = new Dictionary<ITrainingEnvironment, List<Vector2>>();
 
-    private List<AgentTracker> _lastGenerationStandings = new List<AgentTracker>();
+    private List<AgentEntity<CarAgent>> _lastGenerationStandings = new List<AgentEntity<CarAgent>>();
 
     private CarAgent _currentBestAgent;
 
@@ -54,13 +56,15 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     private void Start()
     {
-        _agentCollection = new AgentCollection(_parameters);
-
-        SpawnCarAgents();
+        OnlyShowBestAgents.OnValueChanged += UpdateAgentsVisibility;
 
         _stagnantGenerationCountdown = _stagnantGenerationThreshold;
 
-        OnlyShowBestAgents.OnValueChanged += UpdateAgentsVisibility;
+        _agentsPool = new AgentsPool<CarAgent>(_parameters);
+
+        SpawnCarAgents();
+
+        TrainingTask().Forget();
     }
 
     private void SpawnCarAgents()
@@ -68,31 +72,27 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
         _activeTrainingEnvironment = TrackManager.Singleton.CurrentTrack;
         Transform startTransform = ((TrackCircuit) _activeTrainingEnvironment).StartTransform;
 
-        _agentsAndTrackers = new Dictionary<AgentTracker, CarAgent>();
-
         int depthIndex = 1;
-        foreach (AgentTracker agentTracker in _agentCollection.AgentTrackers)
+        foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
         {
             CarAgent carAgent = Instantiate(_carAgentPrefab, startTransform.position, Quaternion.identity, transform).GetComponent<CarAgent>();
-            carAgent.gameObject.name = $"{_carAgentPrefab.name}_{_agentsAndTrackers.Count}";
+            carAgent.gameObject.name = $"{_carAgentPrefab.name}_{depthIndex}";
 
             carAgent.transform.position = startTransform.position;
             carAgent.transform.rotation = startTransform.rotation;
 
             carAgent.ResetAgent();
-            carAgent.InitialiseGraphics(agentTracker.perceptron.Seed, depthIndex);
+            carAgent.InitialiseGraphics(agentEntity.Perceptron.Seed, depthIndex);
 
-            _agentsAndTrackers.Add(agentTracker, carAgent);
+            agentEntity.AssignBody(carAgent);
 
             depthIndex++;
         }
-
-        StartCoroutine(TrainingCoroutine());
     }
 
-    private IEnumerator TrainingCoroutine()
+    private async UniTask TrainingTask()
     {
-        yield return null;
+        await UniTask.WaitForFixedUpdate();
 
         while (_generationIndex < _maxGenerations)
         {
@@ -103,86 +103,61 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                 _fitnessData.Add(trainingEnvironment, new List<Vector2> {new Vector2(0, 0f)});
             }
 
-            HashSet<AgentTracker> completedTrackers = new HashSet<AgentTracker>();
-            List<AgentTracker> finishedTrackers = new List<AgentTracker>();
+            HashSet<AgentEntity<CarAgent>> completedTrackers = new HashSet<AgentEntity<CarAgent>>();
 
-            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
             {
-                carTrackerPair.Value.SetBestAgent(carTrackerPair.Value == _currentBestAgent);
+                agentEntity.AgentBody.SetBestAgent(agentEntity.AgentBody == _currentBestAgent);
             }
 
-            while (completedTrackers.Count < _agentsAndTrackers.Count)
+            while (completedTrackers.Count < _agentsPool.AgentEntities.Count)
             {
-                // Update the perceptrons of all active agents
-                foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
-                {
-                    carTrackerPair.Deconstruct(out AgentTracker tracker, out CarAgent carAgent);
+                //float agentsUpdateStarTimestamp = Time.realtimeSinceStartup;
 
-                    if (completedTrackers.Contains(tracker))
+                bool agentCompletedThisFrame = false;
+
+                // Update the perceptrons of all active agents
+                foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
+                {
+                    if (completedTrackers.Contains(agentEntity))
                         continue;
 
-                    if (carAgent.State is CarAgent.AgentState.Crashed or CarAgent.AgentState.Timeout or CarAgent.AgentState.Finished)
+                    if (agentEntity.AgentBody.State != CarAgent.AgentState.Alive)
                     {
-                        completedTrackers.Add(tracker);
+                        completedTrackers.Add(agentEntity);
+                        agentCompletedThisFrame = true;
 
-                        carAgent.HandleAgentCompleted();
-
-                        if (carAgent.State == CarAgent.AgentState.Finished)
-                            finishedTrackers.Add(tracker);
-
-                        if (YieldEveryAgent)
-                            yield return null;
+                        agentEntity.AgentBody.HandleAgentCompleted();
 
                         continue;
                     }
 
-                    List<float> inputActivations = new List<float>();
+                    agentEntity.UpdateBrain();
 
-                    inputActivations.AddRange(carAgent.GetViewRayDistances());
-                    inputActivations.Add(carAgent.ThrottleInput);
-                    inputActivations.Add(carAgent.BrakingInput);
-                    inputActivations.Add(carAgent.SteeringInput);
-                    inputActivations.Add(carAgent.SpeedNormalised);
-                    inputActivations.Add(carAgent.TurningNormalised);
-
-                    float[] outputActivations = tracker.perceptron.ProcessInputsToOutputs(inputActivations.ToArray());
-
-                    carAgent.SetControls(outputActivations[0], outputActivations[1], outputActivations[2]);
-
-                    carAgent.UpdateWithTime(Time.fixedDeltaTime);
-
-                    tracker.fitness = carAgent.TrackProgress;
+                    agentEntity.AgentBody.UpdateWithTime(Time.fixedDeltaTime);
                 }
+
+                //Debug.Log($"{(Time.realtimeSinceStartup - agentsUpdateStarTimestamp) * 1000f}ms");
 
                 Physics2D.SyncTransforms();
                 Physics2D.Simulate(Time.fixedDeltaTime);
 
-                if (YieldEveryFrame)
-                    yield return new WaitForFixedUpdate();
-                //yield return null;
+                if (YieldEveryFrame || (YieldEveryAgent && agentCompletedThisFrame))
+                    await UniTask.WaitForFixedUpdate();
             }
 
-            yield return null;
+            await UniTask.WaitForFixedUpdate();
 
             // TRAINING SESSION FINISHED - All agents have completed so time for a new generation
 
-            // Give each agent that finishes a bonus based on their position to make then go round the track faster
-            for (int i = 0; i < finishedTrackers.Count; i++)
-            {
-                CarAgent carAgent = _agentsAndTrackers.First(item => item.Key == finishedTrackers[i]).Value;
-                float timeAlive = carAgent.TimeAlive;
-                float penalty = carAgent.Penalty;
-                finishedTrackers[i].fitness = 100 + (50 - timeAlive) - penalty;
-            }
-
             float maxFitness = 0;
-            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
             {
-                if (carTrackerPair.Key.fitness < maxFitness)
+                if (agentEntity.Fitness < maxFitness)
                     continue;
 
-                maxFitness = carTrackerPair.Key.fitness;
-                _currentBestAgent = carTrackerPair.Value;
+                maxFitness = agentEntity.Fitness;
+                _currentBestAgent = agentEntity.AgentBody;
             }
 
             // Check if the simulation has stagnated
@@ -207,11 +182,11 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
             _fitnessData[trainingEnvironment].Add(new Vector2(_generationIndex, maxFitness));
             OnFitnessDataUpdated?.Invoke();
 
-            _lastGenerationStandings = _agentCollection.AgentTrackers.OrderByDescending(agent => agent.fitness).ToList();
+            _lastGenerationStandings = _agentsPool.AgentEntities.OrderByDescending(agent => agent.Fitness).ToList();
 
             // Cull and repopulate
-            _agentCollection.ApplySurvivalCurve();
-            _agentCollection.Repopulate();
+            _agentsPool.ApplySurvivalCurve();
+            _agentsPool.Repopulate();
 
             if (_stagnated)
             {
@@ -220,14 +195,12 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
             }
 
             // Reset all the cars
-            foreach (KeyValuePair<AgentTracker, CarAgent> carTrackerPair in _agentsAndTrackers)
+            foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
             {
-                carTrackerPair.Deconstruct(out AgentTracker _, out CarAgent carAgent);
+                agentEntity.AgentBody.transform.position = trainingEnvironment.StartTransform.position;
+                agentEntity.AgentBody.transform.rotation = trainingEnvironment.StartTransform.rotation;
 
-                carAgent.transform.position = trainingEnvironment.StartTransform.position;
-                carAgent.transform.rotation = trainingEnvironment.StartTransform.rotation;
-
-                carAgent.ResetAgent();
+                agentEntity.AgentBody.ResetAgent();
             }
 
             UpdateAgentsVisibility(OnlyShowBestAgents);
@@ -236,35 +209,20 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     private void UpdateAgentsVisibility(bool onlyShowBestAgents)
     {
-        // Get the fitness of the third-best agent then use it to show all
-        // agents at or above that fitness, i.e. the top 3 performers
-        // Feels slightly more efficient than a list contains check
-
         if (onlyShowBestAgents)
         {
-            // float lowerBoundFitness = _agentsAndTrackers
-            //     .Keys
-            //     .OrderByDescending(tracker => tracker.fitness)
-            //     .Take(3)
-            //     .Last().fitness;
-            //
-            // foreach (AgentTracker agentTracker in _agentsAndTrackers.Keys)
-            // {
-            //     _agentsAndTrackers[agentTracker].Graphics.SetVisible(agentTracker.fitness >= lowerBoundFitness);
-            // }
+            List<AgentEntity<CarAgent>> bestAgents = _lastGenerationStandings.Take(Mathf.Clamp(_parameters.PopulationCount / 10, 1, 10)).ToList();
 
-            List<AgentTracker> bestAgents = _lastGenerationStandings.Take(Mathf.Clamp(_parameters.PopulationCount / 10, 1, 10)).ToList();
-
-            foreach (AgentTracker agentTracker in _agentsAndTrackers.Keys)
+            foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
             {
-                _agentsAndTrackers[agentTracker].Graphics.SetVisible(bestAgents.Contains(agentTracker));
+                agentEntity.AgentBody.Graphics.SetVisible(bestAgents.Contains(agentEntity));
             }
         }
         else
         {
-            foreach (AgentTracker agentTracker in _agentsAndTrackers.Keys)
+            foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
             {
-                _agentsAndTrackers[agentTracker].Graphics.SetVisible(true);
+                agentEntity.AgentBody.Graphics.SetVisible(true);
             }
         }
     }

@@ -72,20 +72,20 @@ namespace NeuralNet
             }
         }
 
-        public float[] ProcessInputsToOutputs(float[] activations)
+        public float[] Process(float[] firstLayerActivations)
         {
-            SetInputActivations(activations);
-            ProcessInputActivations();
+            SetFirstLayerActivations(firstLayerActivations);
+            ProcessLayers();
             return GetOutputActivations();
         }
 
-        public void SetInputActivations(float[] activations)
+        private void SetFirstLayerActivations(float[] activations)
         {
             for (int a = 0; a < activations.Length; a++)
                 _layers[0].Neurons[a].Activation = activations[a];
         }
 
-        public void ProcessInputActivations()
+        private void ProcessLayers()
         {
             float[] inputActivations = _layers[0].GetActivations();
 

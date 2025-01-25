@@ -1,41 +1,42 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using NeuralNet;
 
-public class AgentCollection
+public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
 {
     private TrainingParameters _parameters;
-    private List<AgentTracker> _agentTrackers;
+    private List<AgentEntity<TAgentBody>> _agentEntities;
 
     private Random _random;
 
-    public List<AgentTracker> AgentTrackers => _agentTrackers;
+    public List<AgentEntity<TAgentBody>> AgentEntities => _agentEntities;
 
     public Random Random => _random;
 
-    public AgentCollection(TrainingParameters parameters)
+    public AgentsPool(TrainingParameters parameters)
     {
         _random = new Random(parameters.Seed);
 
         _parameters = parameters;
-        _agentTrackers = new List<AgentTracker>();
+        _agentEntities = new List<AgentEntity<TAgentBody>>();
 
         for (int i = 0; i < parameters.PopulationCount; i++)
         {
             Perceptron perceptron = new Perceptron(parameters.NeuronCounts, _random.Next());
-            AgentTracker agentTracker = new AgentTracker(perceptron);
-            _agentTrackers.Add(agentTracker);
+            AgentEntity<TAgentBody> agentTracker = new AgentEntity<TAgentBody>(perceptron);
+            _agentEntities.Add(agentTracker);
         }
     }
 
     public void ApplySurvivalCurve()
     {
         // Order agents by worst to best, worst first, best last
-        _agentTrackers = _agentTrackers.OrderBy(tracker => tracker.fitness).ToList();
+        _agentEntities = _agentEntities.OrderBy(entity => entity.Fitness).ToList();
 
         // Higher rank is better
-        for (int rank = 0; rank < _agentTrackers.Count; rank++)
+        for (int rank = 0; rank < _agentEntities.Count; rank++)
         {
             float rankNormalised = rank / (float) (_parameters.PopulationCount - 1);
             float survivalChance = _parameters.SurvivalChanceCurve.Evaluate(rankNormalised);
@@ -43,28 +44,28 @@ public class AgentCollection
 
             if (survivalValue > survivalChance)
             {
-                _agentTrackers[rank].perceptron = null;
+                _agentEntities[rank].AssignBrain(null);
             }
         }
     }
 
     public void Repopulate()
     {
-        List<AgentTracker> survivingTrackers = _agentTrackers.Where(tracker => tracker.perceptron != null).OrderByDescending(tracker => tracker.fitness).ToList();
-        List<AgentTracker> emptyTrackers = _agentTrackers.Where(tracker => tracker.perceptron == null).ToList();
+        List<AgentEntity<TAgentBody>> survivingEntities = _agentEntities.Where(tracker => tracker.Perceptron != null).OrderByDescending(tracker => tracker.Fitness).ToList();
+        List<AgentEntity<TAgentBody>> emptyEntities = _agentEntities.Where(tracker => tracker.Perceptron == null).ToList();
 
-        for (int i = 0; i < emptyTrackers.Count; i += 2)
+        for (int i = 0; i < emptyEntities.Count; i += 2)
         {
-            AgentTracker trackerOne = emptyTrackers[i];
-            AgentTracker trackerTwo = i < emptyTrackers.Count - 1 ? emptyTrackers[i + 1] : null;
+            AgentEntity<TAgentBody> entityOne = emptyEntities[i];
+            AgentEntity<TAgentBody> entityTwo = i < emptyEntities.Count - 1 ? emptyEntities[i + 1] : null;
 
             // Select two parents
-            AgentTracker parentOne = SelectParent(survivingTrackers);
-            AgentTracker parentTwo = SelectParent(survivingTrackers, parentOne);
+            AgentEntity<TAgentBody> parentOne = SelectParent(survivingEntities);
+            AgentEntity<TAgentBody> parentTwo = SelectParent(survivingEntities, parentOne);
 
             // Export genomes
-            SerialPerceptron genomeOne = parentOne.perceptron.ExportPerceptron();
-            SerialPerceptron genomeTwo = parentTwo.perceptron.ExportPerceptron();
+            SerialPerceptron genomeOne = parentOne.Perceptron.ExportPerceptron();
+            SerialPerceptron genomeTwo = parentTwo.Perceptron.ExportPerceptron();
 
             CrossoverGenomes(genomeOne, genomeTwo);
 
@@ -72,33 +73,31 @@ public class AgentCollection
             MutateGenome(genomeTwo);
 
             Perceptron childPerceptronOne = Perceptron.CreatePerceptron(genomeOne, _random.Next());
-            trackerOne.perceptron = childPerceptronOne;
-            trackerOne.fitness = 0f;
+            entityOne.AssignBrain(childPerceptronOne);
 
-            if (trackerTwo != null)
+            if (entityTwo != null)
             {
                 Perceptron childPerceptronTwo = Perceptron.CreatePerceptron(genomeTwo, _random.Next());
-                trackerTwo.perceptron = childPerceptronTwo;
-                trackerTwo.fitness = 0f;
+                entityTwo.AssignBrain(childPerceptronTwo);
             }
         }
     }
 
-    public AgentTracker SelectParent(List<AgentTracker> sourcePool, AgentTracker filter = null)
+    public AgentEntity<TAgentBody> SelectParent(List<AgentEntity<TAgentBody>> sourcePool, AgentEntity<TAgentBody> filter = null)
     {
-        float fitnessSum = sourcePool.Sum(tracker => tracker.fitness);
+        float fitnessSum = sourcePool.Sum(entity => entity.Fitness);
 
         float parentFitnessValue = _random.NextFloat(0, fitnessSum);
         float runningTotal = 0;
 
-        foreach (AgentTracker tracker in sourcePool)
+        foreach (AgentEntity<TAgentBody> entity in sourcePool)
         {
-            if (runningTotal + tracker.fitness >= parentFitnessValue && tracker != filter)
+            if (runningTotal + entity.Fitness >= parentFitnessValue && entity != filter)
             {
-                return tracker;
+                return entity;
             }
 
-            runningTotal += tracker.fitness;
+            runningTotal += entity.Fitness;
         }
 
         return sourcePool.Last();

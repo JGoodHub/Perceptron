@@ -5,7 +5,7 @@ using NeuralNet;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-public class CarAgent : MonoBehaviour
+public class CarAgent : MonoBehaviour, IAgentBody
 {
     [Serializable]
     public class ViewRay
@@ -18,8 +18,9 @@ public class CarAgent : MonoBehaviour
     public enum AgentState
     {
         Alive,
-        Timeout,
         Crashed,
+        Timeout,
+        Misaligned,
         Finished
     }
 
@@ -47,27 +48,11 @@ public class CarAgent : MonoBehaviour
     private float _trackProgress;
     private float _toSlowCountdown = 2f;
 
-    private bool _isBestAgent = false;
+    private bool _isBestAgent;
 
     private float _penalty = 0f;
 
     public AgentState State => _state;
-
-    public float ThrottleInput => _throttleInput;
-
-    public float BrakingInput => _brakingInput;
-
-    public float SteeringInput => _steeringInput;
-
-    public float SpeedNormalised => _currentSpeed / _maxSpeed;
-    
-    public float TurningNormalised => _currentSpeed / 120;
-
-    public float TimeAlive => _timeAlive;
-
-    public float TrackProgress => _trackProgress;
-
-    public float Penalty => _penalty;
 
     public CarGraphicsSwapper Graphics => _graphics;
 
@@ -104,23 +89,24 @@ public class CarAgent : MonoBehaviour
         _brakingInput = braking;
     }
 
-    public List<float> GetViewRayDistances()
+    public float[] GetViewRayDistances()
     {
-        List<float> distances = new List<float>();
+        float[] distances = new float[_viewRays.Count];
 
-        foreach (ViewRay viewRay in _viewRays)
+        for (int i = 0; i < _viewRays.Count; i++)
         {
-            Vector3 viewRayDirection = Quaternion.Euler(0, 0, -viewRay.Angle) * transform.up;
+            Vector3 viewRayDirection = Quaternion.Euler(0, 0, -_viewRays[i].Angle) * transform.up;
 
             float contactDistanceNormalised = 1f;
 
-            int layerMask = ~LayerMask.GetMask("Agents", "Finish");
-            RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, viewRay.MaxDistance, layerMask);
+            const int layerMask = 256; // Environment
+
+            RaycastHit2D raycastHit = Physics2D.Raycast(transform.position, viewRayDirection, _viewRays[i].MaxDistance, layerMask);
 
             if (raycastHit.collider != null)
-                contactDistanceNormalised = raycastHit.distance / viewRay.MaxDistance;
+                contactDistanceNormalised = raycastHit.distance / _viewRays[i].MaxDistance;
 
-            distances.Add(contactDistanceNormalised);
+            distances[i] = contactDistanceNormalised;
         }
 
         return distances;
@@ -130,6 +116,8 @@ public class CarAgent : MonoBehaviour
     {
         if (_state != AgentState.Alive)
             return;
+
+        TrackCircuit currentTrack = TrackManager.Singleton.CurrentTrack;
 
         _currentSpeed += (_acceleration * _throttleInput * deltaTime);
         _currentSpeed -= (_deceleration * _brakingInput * deltaTime);
@@ -144,13 +132,13 @@ public class CarAgent : MonoBehaviour
         transform.position += translationVector;
 
         _timeAlive += deltaTime;
-        _trackProgress = Mathf.Max(_trackProgress, TrackManager.Singleton.CurrentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
+        _trackProgress = Mathf.Max(_trackProgress, currentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
 
         if (_throttleInput > 0.15f && _brakingInput > 0.15f)
         {
             _penalty += deltaTime;
         }
-        
+
         if (_playerControlled == false)
         {
             if (_currentSpeed < 0.3f)
@@ -162,9 +150,14 @@ public class CarAgent : MonoBehaviour
                 _toSlowCountdown = 2f;
             }
 
-            if (TrackManager.Singleton.CurrentTrack.IsAlignedToTrack(transform) == false || _toSlowCountdown <= 0f)
+            if (_toSlowCountdown <= 0f)
             {
                 _state = AgentState.Timeout;
+            }
+
+            if (currentTrack.IsAlignedToTrack(transform) == false)
+            {
+                _state = AgentState.Misaligned;
             }
         }
 
@@ -179,6 +172,9 @@ public class CarAgent : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (_state != AgentState.Alive)
+            return;
+
         if (CompareTag(other.tag))
             return;
 
@@ -193,7 +189,7 @@ public class CarAgent : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        //return;
+        return;
 
         foreach (ViewRay viewRay in _viewRays)
         {
@@ -218,5 +214,37 @@ public class CarAgent : MonoBehaviour
     public void SetBestAgent(bool isBestAgent)
     {
         _isBestAgent = isBestAgent;
+    }
+
+    public float[] GetInputActivations()
+    {
+        float[] inputActivations = new float[12];
+
+        inputActivations[0] = _throttleInput;
+        inputActivations[1] = _brakingInput;
+        inputActivations[2] = _steeringInput;
+        inputActivations[3] = _currentSpeed / _maxSpeed;
+        inputActivations[4] = _currentSpeed / 120;
+
+        GetViewRayDistances().CopyTo(inputActivations, 5);
+
+        return inputActivations;
+    }
+
+    public void ActionOutputs(float[] outputs)
+    {
+        _steeringInput = outputs[0];
+        _throttleInput = outputs[1];
+        _brakingInput = outputs[2];
+    }
+
+    public float GetFitness()
+    {
+        if (_state == AgentState.Finished)
+        {
+            return 100 + (50 - _timeAlive) - _penalty;
+        }
+
+        return _trackProgress;
     }
 }

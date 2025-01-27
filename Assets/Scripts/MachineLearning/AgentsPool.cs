@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using GoodHub.Core.Runtime.Utils;
 using NeuralNet;
 
 public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
@@ -13,18 +14,17 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
 
     public List<AgentEntity<TAgentBody>> AgentEntities => _agentEntities;
 
-    public Random Random => _random;
-
     public AgentsPool(TrainingParameters parameters)
     {
-        _random = new Random(parameters.Seed);
-
         _parameters = parameters;
+
+        _random = new Random(_parameters.Seed);
+
         _agentEntities = new List<AgentEntity<TAgentBody>>();
 
-        for (int i = 0; i < parameters.PopulationCount; i++)
+        for (int i = 0; i < _parameters.PopulationCount; i++)
         {
-            Perceptron perceptron = new Perceptron(parameters.NeuronCounts, _random.Next());
+            Perceptron perceptron = new Perceptron(_parameters.NeuronCounts, _random.Next(), _parameters.ActivationFunctionType);
             AgentEntity<TAgentBody> agentTracker = new AgentEntity<TAgentBody>(perceptron);
             _agentEntities.Add(agentTracker);
         }
@@ -106,27 +106,27 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
     private void CrossoverGenomes(SerialPerceptron genomeOne, SerialPerceptron genomeTwo)
     {
         // Swap the weight genes
-        for (int n = 0; n < genomeOne.weights.Count; n++)
+        for (int n = 0; n < genomeOne.Weights.Count; n++)
         {
-            for (int w = 0; w < genomeOne.weights[n].Length; w++)
+            for (int w = 0; w < genomeOne.Weights[n].Length; w++)
             {
                 float swapChance = _random.NextFloat();
 
                 if (swapChance <= _parameters.CrossoverRate)
                 {
-                    (genomeOne.weights[n][w], genomeTwo.weights[n][w]) = (genomeTwo.weights[n][w], genomeOne.weights[n][w]);
+                    (genomeOne.Weights[n][w], genomeTwo.Weights[n][w]) = (genomeTwo.Weights[n][w], genomeOne.Weights[n][w]);
                 }
             }
         }
 
         // Swap the bias genes
-        for (int b = 0; b < genomeOne.biases.Count; b++)
+        for (int b = 0; b < genomeOne.Biases.Count; b++)
         {
             float swapChance = _random.NextFloat();
 
             if (swapChance <= _parameters.CrossoverRate)
             {
-                (genomeOne.biases[b], genomeTwo.biases[b]) = (genomeTwo.biases[b], genomeOne.biases[b]);
+                (genomeOne.Biases[b], genomeTwo.Biases[b]) = (genomeTwo.Biases[b], genomeOne.Biases[b]);
             }
         }
     }
@@ -134,27 +134,27 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
     private void MutateGenome(SerialPerceptron genome)
     {
         // Mutate the weight genes
-        for (int n = 0; n < genome.weights.Count; n++)
+        for (int n = 0; n < genome.Weights.Count; n++)
         {
-            for (int w = 0; w < genome.weights[n].Length; w++)
+            for (int w = 0; w < genome.Weights[n].Length; w++)
             {
                 float mutateChance = _random.NextFloat();
 
                 if (mutateChance <= _parameters.MutationProbability)
                 {
-                    genome.weights[n][w] = _random.NextFloat(_parameters.MutationRange * -1f, _parameters.MutationRange);
+                    genome.Weights[n][w] = _random.NextFloat(_parameters.MutationRange * -1f, _parameters.MutationRange);
                 }
             }
         }
 
         // Mutate the bias genes
-        for (int b = 0; b < genome.biases.Count; b++)
+        for (int b = 0; b < genome.Biases.Count; b++)
         {
             float mutateChance = _random.NextFloat();
 
             if (mutateChance <= _parameters.MutationProbability)
             {
-                genome.biases[b] = _random.NextFloat(_parameters.MutationRange * -1f, _parameters.MutationRange);
+                genome.Biases[b] = _random.NextFloat(_parameters.MutationRange * -1f, _parameters.MutationRange);
             }
         }
     }

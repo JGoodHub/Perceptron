@@ -13,9 +13,7 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
     [SerializeField] private TrainingParameters _parameters;
     [SerializeField] private GameObject _carAgentPrefab;
     [SerializeField] private int _maxGenerations = 9999;
-    [SerializeField] private int _stagnantGenerationThreshold = 540;
-
-    //private Dictionary<AgentTracker, CarAgent> _agentsAndTrackers;
+    [SerializeField] private int _stagnantGenerationThreshold = 50;
 
     private AgentsPool<CarAgent> _agentsPool;
     private int _generationIndex;
@@ -81,7 +79,7 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
             carAgent.transform.position = startTransform.position;
             carAgent.transform.rotation = startTransform.rotation;
 
-            carAgent.ResetAgent();
+            carAgent.ResetBody();
             carAgent.InitialiseGraphics(agentEntity.Perceptron.Seed, depthIndex);
 
             agentEntity.AssignBody(carAgent);
@@ -200,7 +198,7 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                 agentEntity.AgentBody.transform.position = trainingEnvironment.StartTransform.position;
                 agentEntity.AgentBody.transform.rotation = trainingEnvironment.StartTransform.rotation;
 
-                agentEntity.AgentBody.ResetAgent();
+                agentEntity.AgentBody.ResetBody();
             }
 
             UpdateAgentsVisibility(OnlyShowBestAgents);

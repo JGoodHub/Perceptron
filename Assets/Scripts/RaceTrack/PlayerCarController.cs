@@ -9,7 +9,7 @@ public class PlayerCarController : MonoBehaviour
 
     private void Start()
     {
-        _carAgent.ResetAgent();
+        _carAgent.ResetBody();
     }
 
     private void Update()

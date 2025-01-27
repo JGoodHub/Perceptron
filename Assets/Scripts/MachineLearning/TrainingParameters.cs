@@ -1,18 +1,27 @@
 using System;
+using NeuralNet;
 using UnityEngine;
 
 [Serializable]
 public class TrainingParameters
 {
+    [Header("General")]
     [SerializeField] private int _seed;
-    [SerializeField] private int[] _neuronCounts = {4, 24, 24, 4};
+
+    [Header("MLP Params")]
+    [SerializeField] private ActivationFunctions.ActivationFunctionType _activationFunctionType;
+    [SerializeField] private int[] _neuronCounts = {8, 16, 8, 4};
+
+    [Header("Genetic Params")]
     [SerializeField] private int _populationCount = 60;
     [SerializeField] private AnimationCurve _survivalChanceCurve;
-    [SerializeField] private float _crossoverRate = 0.6f;
+    [SerializeField] private float _crossoverRate = 0.5f;
     [SerializeField] private float _mutationProbability = 0.01f;
     [SerializeField] private float _mutationRange = 5f;
 
     public int Seed => _seed;
+
+    public ActivationFunctions.ActivationFunctionType ActivationFunctionType => _activationFunctionType;
 
     public int[] NeuronCounts => _neuronCounts;
 

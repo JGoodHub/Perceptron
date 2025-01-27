@@ -25,7 +25,7 @@ public class CarAgent : MonoBehaviour, IAgentBody
     }
 
     [SerializeField] private List<ViewRay> _viewRays;
-
+    [Space]
     [SerializeField] private float _acceleration = 1;
     [SerializeField] private float _deceleration = 2;
     [SerializeField] private float _resistance = 0.5f;
@@ -62,7 +62,7 @@ public class CarAgent : MonoBehaviour, IAgentBody
         _graphics.SetDepth(depth);
     }
 
-    public void ResetAgent()
+    public void ResetBody()
     {
         _trackProgress = 0f;
         _timeAlive = 0f;
@@ -233,9 +233,9 @@ public class CarAgent : MonoBehaviour, IAgentBody
 
     public void ActionOutputs(float[] outputs)
     {
-        _steeringInput = outputs[0];
-        _throttleInput = outputs[1];
-        _brakingInput = outputs[2];
+        _steeringInput = Mathf.Clamp(outputs[0], -1000, 1000);
+        _throttleInput = Mathf.Clamp(outputs[1], -1000, 1000);
+        _brakingInput = Mathf.Clamp(outputs[2], -1000, 1000);
     }
 
     public float GetFitness()

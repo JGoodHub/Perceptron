@@ -141,10 +141,10 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
                 Physics2D.Simulate(Time.fixedDeltaTime);
 
                 if (YieldEveryFrame || (YieldEveryAgent && agentCompletedThisFrame))
-                    await UniTask.WaitForFixedUpdate();
+                    await UniTask.DelayFrame(1, PlayerLoopTiming.FixedUpdate);
             }
 
-            await UniTask.WaitForFixedUpdate();
+            await UniTask.DelayFrame(5);
 
             // TRAINING SESSION FINISHED - All agents have completed so time for a new generation
 
@@ -177,14 +177,14 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
             // Log the best fitness for this training environment
 
-            _fitnessData[trainingEnvironment].Add(new Vector2(_generationIndex, maxFitness));
+            _fitnessData[trainingEnvironment].Add(new Vector2(_fitnessData[trainingEnvironment].Count + 1, maxFitness));
             OnFitnessDataUpdated?.Invoke();
 
             _lastGenerationStandings = _agentsPool.AgentEntities.OrderByDescending(agent => agent.Fitness).ToList();
 
             // Cull and repopulate
             _agentsPool.ApplySurvivalCurve();
-            _agentsPool.Repopulate();
+            _agentsPool.Repopulate(_generationIndex);
 
             if (_stagnated)
             {

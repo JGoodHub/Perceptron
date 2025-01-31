@@ -50,8 +50,6 @@ public class CarAgent : MonoBehaviour, IAgentBody
 
     private bool _isBestAgent;
 
-    private float _penalty = 0f;
-
     public AgentState State => _state;
 
     public CarGraphicsSwapper Graphics => _graphics;
@@ -76,8 +74,6 @@ public class CarAgent : MonoBehaviour, IAgentBody
         _steeringInput = 0;
 
         _toSlowCountdown = 2f;
-
-        _penalty = 0f;
 
         _graphics.ResetPositionHistory();
     }
@@ -125,7 +121,7 @@ public class CarAgent : MonoBehaviour, IAgentBody
 
         _currentSpeed = Mathf.Clamp(_currentSpeed, 0, _maxSpeed);
 
-        _currentTurning = _speedSteeringCurve.Evaluate(_currentSpeed) * ((_steeringInput - 0.5f) * 2f);
+        _currentTurning = _speedSteeringCurve.Evaluate(_currentSpeed) * _steeringInput;
         transform.Rotate(Vector3.forward, _currentTurning * -1f * deltaTime);
 
         Vector3 translationVector = transform.up * (_currentSpeed * deltaTime);
@@ -133,11 +129,6 @@ public class CarAgent : MonoBehaviour, IAgentBody
 
         _timeAlive += deltaTime;
         _trackProgress = Mathf.Max(_trackProgress, currentTrack.GetNormalisedDistanceAlongTrack(transform) * 100);
-
-        if (_throttleInput > 0.15f && _brakingInput > 0.15f)
-        {
-            _penalty += deltaTime;
-        }
 
         if (_playerControlled == false)
         {
@@ -218,31 +209,28 @@ public class CarAgent : MonoBehaviour, IAgentBody
 
     public float[] GetInputActivations()
     {
-        float[] inputActivations = new float[12];
+        float[] inputActivations = new float[9];
 
-        inputActivations[0] = _throttleInput;
-        inputActivations[1] = _brakingInput;
-        inputActivations[2] = _steeringInput;
-        inputActivations[3] = _currentSpeed / _maxSpeed;
-        inputActivations[4] = _currentSpeed / 120;
+        inputActivations[0] = _currentSpeed / _maxSpeed;
+        inputActivations[1] = _currentTurning / 120;
 
-        GetViewRayDistances().CopyTo(inputActivations, 5);
+        GetViewRayDistances().CopyTo(inputActivations, 2);
 
         return inputActivations;
     }
 
     public void ActionOutputs(float[] outputs)
     {
-        _steeringInput = Mathf.Clamp(outputs[0], -1000, 1000);
-        _throttleInput = Mathf.Clamp(outputs[1], -1000, 1000);
-        _brakingInput = Mathf.Clamp(outputs[2], -1000, 1000);
+        _steeringInput = outputs[0]; // -1 to 1
+        _throttleInput = Mathf.Clamp01(outputs[1]); // clamped 0 to 1
+        _brakingInput = Mathf.Clamp(outputs[1], -1f, 0f) * -1f; //  clamped -1 to 0 and inverted
     }
 
     public float GetFitness()
     {
         if (_state == AgentState.Finished)
         {
-            return 100 + (50 - _timeAlive) - _penalty;
+            return 100 + (100 - _timeAlive);
         }
 
         return _trackProgress;

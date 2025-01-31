@@ -6,18 +6,21 @@ namespace NeuralNet
     [Serializable]
     public class SerialPerceptron
     {
-        public readonly List<int> NeuronsPerLayer;
-        public readonly List<float[]> Weights;
-        public readonly List<float> Biases;
-        public readonly ActivationFunctions.ActivationFunctionType ActivationFunctionType;
-
-        public SerialPerceptron(List<int> neuronsPerLayer, List<float[]> weights, List<float> biases,
-            ActivationFunctions.ActivationFunctionType activationFunctionType)
+        private int _neuronCount = 0;
+        
+        public readonly LayerParams[] LayerParams;
+        public readonly float[][] Weights;
+        public readonly float[] Biases;
+        public readonly WeightInitialisationType WeightInitializationType;
+        
+        public SerialPerceptron(LayerParams[] layerParams,
+            float[][] weights, float[] biases,
+            WeightInitialisationType weightInitializationType)
         {
-            NeuronsPerLayer = neuronsPerLayer;
+            LayerParams = layerParams;
             Weights = weights;
             Biases = biases;
-            ActivationFunctionType = activationFunctionType;
+            WeightInitializationType = weightInitializationType;
         }
 
         public override string ToString()
@@ -29,10 +32,10 @@ namespace NeuralNet
         {
             HashCode hashCode = new HashCode();
 
-            for (int i = 0; i < NeuronsPerLayer.Count; i++)
-                hashCode.Add(NeuronsPerLayer[i]);
+            for (int i = 0; i < LayerParams.Length; i++)
+                hashCode.Add(LayerParams[i].GetHashCode());
 
-            for (int n = 0; n < Weights.Count; n++)
+            for (int n = 0; n < Weights.Length; n++)
             {
                 for (int w = 0; w < Weights[n].Length; w++)
                 {

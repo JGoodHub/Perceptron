@@ -8,27 +8,42 @@ namespace NeuralNet
     {
         private readonly int _seed;
 
+        private readonly LayerParams[] _layerParams;
         private readonly Layer[] _layers;
-        private readonly ActivationFunctions.ActivationFunctionType _activationFunctionType;
+
+        private readonly WeightInitialisationType _weightInitializationType;
+        private readonly ActivationFunctionType _activationFunctionType;
 
         public int Seed => _seed;
 
+        public LayerParams[] LayerParams => _layerParams;
+
         public Layer[] Layers => _layers;
 
-        public Perceptron(int[] neuronsPerLayer, int seed,
-            ActivationFunctions.ActivationFunctionType activationFunctionType)
+        public Perceptron(int seed, LayerParams[] layerParams,
+            WeightInitialisationType weightInitializationType)
         {
-            _seed = seed == -1 ? DateTime.Now.GetHashCode() : seed;
+            _seed = seed <= -1 ? DateTime.Now.GetHashCode() : seed;
+            Random random = new Random(_seed);
 
-            Random random = new Random(seed);
+            _layerParams = layerParams;
+            _layers = new Layer[_layerParams.Length];
 
-            _layers = new Layer[neuronsPerLayer.Length];
-            _activationFunctionType = activationFunctionType;
+            _weightInitializationType = weightInitializationType;
 
-            for (int i = 0; i < neuronsPerLayer.Length; i++)
+            for (int i = 0; i < _layerParams.Length; i++)
             {
-                Layer previousLayer = i == 0 ? null : _layers[i - 1];
-                Layer layer = new Layer(neuronsPerLayer[i], previousLayer, random, 1, activationFunctionType);
+                WeightInitialisationType weightInitialisationType = i == 0 ? WeightInitialisationType.None : _weightInitializationType;
+
+                int fanInCount = i == 0 ? 0 : _layerParams[i - 1].NeuronCount;
+                int fanOutCount = i == _layerParams.Length - 1 ? 0 : _layerParams[i + 1].NeuronCount;
+
+                Layer layer = new Layer(random,
+                    _layerParams[i],
+                    weightInitialisationType,
+                    fanInCount, fanOutCount
+                );
+
                 _layers[i] = layer;
             }
         }
@@ -88,7 +103,8 @@ namespace NeuralNet
 
         public static Perceptron CreatePerceptron(SerialPerceptron serialPerceptron, int seed)
         {
-            Perceptron perceptron = new Perceptron(serialPerceptron.NeuronsPerLayer.ToArray(), seed, serialPerceptron.ActivationFunctionType);
+            Perceptron perceptron = new Perceptron(seed, serialPerceptron.LayerParams,
+                serialPerceptron.WeightInitializationType);
 
             int neuronCounter = 0;
             for (int l = 1; l < perceptron.Layers.Length; l++)
@@ -108,27 +124,28 @@ namespace NeuralNet
 
         public SerialPerceptron ExportPerceptron()
         {
-            List<int> neuronsPerLayer = new List<int>();
+            int neuronsCount = 0;
+            for (int l = 1; l < _layers.Length; l++)
+                neuronsCount += _layers[l].Neurons.Length;
 
-            for (int i = 0; i < _layers.Length; i++)
-                neuronsPerLayer.Add(_layers[i].Neurons.Length);
+            float[][] weights = new float[neuronsCount][];
+            float[] biases = new float[neuronsCount];
 
-            List<float[]> weights = new List<float[]>();
-            List<float> biases = new List<float>();
+            int neuronIndex = 0;
 
             for (int l = 1; l < _layers.Length; l++)
             {
                 Layer layer = _layers[l];
                 for (int n = 0; n < layer.Neurons.Length; n++)
                 {
-                    Neuron neuron = layer.Neurons[n];
+                    weights[neuronIndex] = (float[]) layer.Neurons[n].Weights.Clone();
+                    biases[neuronIndex] = layer.Neurons[n].Bias;
 
-                    weights.Add((float[]) neuron.Weights.Clone());
-                    biases.Add(neuron.Bias);
+                    neuronIndex++;
                 }
             }
 
-            return new SerialPerceptron(neuronsPerLayer, weights, biases, _activationFunctionType);
+            return new SerialPerceptron(_layerParams, weights, biases, _weightInitializationType);
         }
 
         public override string ToString()

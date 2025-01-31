@@ -2,14 +2,24 @@
 
 namespace NeuralNet
 {
+    public enum ActivationFunctionType
+    {
+        Linear,
+        Sigmoid,
+        ReLU,
+        LeakyReLU,
+        Tanh
+    }
+
     public static class ActivationFunctions
     {
-        public enum ActivationFunctionType
+        /// <summary>
+        /// Applies the Linear activation function to the input. <br/>
+        /// Simply maps the input directly to the output
+        /// </summary>
+        public static float Linear(float input)
         {
-            Sigmoid,
-            ReLU,
-            LeakyReLU,
-            Tanh
+            return input;
         }
 
         /// <summary>
@@ -55,6 +65,7 @@ namespace NeuralNet
         {
             return activationFunctionType switch
             {
+                ActivationFunctionType.Linear => Linear,
                 ActivationFunctionType.Sigmoid => Sigmoid,
                 ActivationFunctionType.ReLU => ReLU,
                 ActivationFunctionType.LeakyReLU => LeakyReLU,

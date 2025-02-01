@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: effa1ae58d327486dbe19f79fe5686b5, type: 3}
+  m_Name: PerceptronWindowConfig
+  m_EditorClassIdentifier: 
+  _name: Fitness Graph
+  _windowPrefab: {fileID: 962823487535947011, guid: 178bd90fc56b4465499bbf43a2dfa22e, type: 3}
+  _iconPrefab: {fileID: 5238266657529679600, guid: e431012b46594486b80b459ff874eb8b, type: 3}

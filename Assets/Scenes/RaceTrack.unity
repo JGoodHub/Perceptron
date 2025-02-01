@@ -4164,15 +4164,15 @@ MonoBehaviour:
     _layerParams:
     - _neuronCount: 9
       _activationFunctionType: 0
-    - _neuronCount: 12
+    - _neuronCount: 10
       _activationFunctionType: 4
-    - _neuronCount: 12
+    - _neuronCount: 10
       _activationFunctionType: 4
     - _neuronCount: 6
       _activationFunctionType: 4
     - _neuronCount: 2
       _activationFunctionType: 4
-    _populationCount: 150
+    _populationCount: 200
     _survivalChanceCurve:
       serializedVersion: 2
       m_Curve:
@@ -4210,10 +4210,10 @@ MonoBehaviour:
     _offsetMutationParams:
       _globalMutationChance: 1
       _entries:
-      - GenerationBoundary: 340
-        Probability: 0.1
+      - GenerationBoundary: 300
+        Probability: 0.2
         Strength: 1
-      - GenerationBoundary: 670
+      - GenerationBoundary: 600
         Probability: 0.05
         Strength: 0.5
       - GenerationBoundary: 1000
@@ -4222,10 +4222,10 @@ MonoBehaviour:
     _resetMutationParams:
       _globalMutationChance: 0.1
       _entries:
-      - GenerationBoundary: 340
+      - GenerationBoundary: 300
         Probability: 0.1
         Strength: 2
-      - GenerationBoundary: 670
+      - GenerationBoundary: 600
         Probability: 0.05
         Strength: 2
       - GenerationBoundary: 1000

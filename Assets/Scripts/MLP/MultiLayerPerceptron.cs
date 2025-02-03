@@ -4,7 +4,7 @@ using Random = System.Random;
 
 namespace NeuralNet
 {
-    public class Perceptron
+    public class MultiLayerPerceptron
     {
         private readonly int _seed;
 
@@ -16,11 +16,7 @@ namespace NeuralNet
 
         public int Seed => _seed;
 
-        public LayerParams[] LayerParams => _layerParams;
-
-        public Layer[] Layers => _layers;
-
-        public Perceptron(int seed, LayerParams[] layerParams,
+        public MultiLayerPerceptron(int seed, LayerParams[] layerParams,
             WeightInitialisationType weightInitializationType)
         {
             _seed = seed <= -1 ? DateTime.Now.GetHashCode() : seed;
@@ -33,7 +29,8 @@ namespace NeuralNet
 
             for (int i = 0; i < _layerParams.Length; i++)
             {
-                WeightInitialisationType weightInitialisationType = i == 0 ? WeightInitialisationType.None : _weightInitializationType;
+                WeightInitialisationType weightInitialisationType =
+                    i == 0 ? WeightInitialisationType.None : _weightInitializationType;
 
                 int fanInCount = i == 0 ? 0 : _layerParams[i - 1].NeuronCount;
                 int fanOutCount = i == _layerParams.Length - 1 ? 0 : _layerParams[i + 1].NeuronCount;
@@ -101,21 +98,21 @@ namespace NeuralNet
             return maxIndex;
         }
 
-        public static Perceptron CreatePerceptron(SerialPerceptron serialPerceptron, int seed)
+        public static MultiLayerPerceptron CreatePerceptron(SerialPerceptron serialPerceptron, int seed)
         {
-            Perceptron perceptron = new Perceptron(seed, serialPerceptron.LayerParams,
-                serialPerceptron.WeightInitializationType);
+            MultiLayerPerceptron perceptron = new MultiLayerPerceptron(seed,
+                serialPerceptron.LayerParams, serialPerceptron.WeightInitializationType);
 
-            int neuronCounter = 0;
-            for (int l = 1; l < perceptron.Layers.Length; l++)
+            int neuronIndex = 0;
+            for (int l = 1; l < perceptron._layers.Length; l++)
             {
-                Layer layer = perceptron.Layers[l];
-                for (int n = 0; n < layer.Neurons.Length; n++)
+                Layer layer = perceptron._layers[l];
+                for (int n = 0; n < layer.Neurons.Length; n++, neuronIndex++)
                 {
                     Neuron neuron = layer.Neurons[n];
-                    neuron.Weights = (float[]) serialPerceptron.Weights[neuronCounter].Clone();
-                    neuron.Bias = serialPerceptron.Biases[neuronCounter];
-                    neuronCounter++;
+                    SerialNeuron serialNeuron = serialPerceptron.SerialNeurons[neuronIndex];
+                    neuron.Weights = (float[])serialNeuron.Weights.Clone();
+                    neuron.Bias = serialNeuron.Bias;
                 }
             }
 
@@ -128,24 +125,21 @@ namespace NeuralNet
             for (int l = 1; l < _layers.Length; l++)
                 neuronsCount += _layers[l].Neurons.Length;
 
-            float[][] weights = new float[neuronsCount][];
-            float[] biases = new float[neuronsCount];
+            SerialNeuron[] serialNeurons = new SerialNeuron[neuronsCount];
 
             int neuronIndex = 0;
-
             for (int l = 1; l < _layers.Length; l++)
             {
                 Layer layer = _layers[l];
-                for (int n = 0; n < layer.Neurons.Length; n++)
+                for (int n = 0; n < layer.Neurons.Length; n++, neuronIndex++)
                 {
-                    weights[neuronIndex] = (float[]) layer.Neurons[n].Weights.Clone();
-                    biases[neuronIndex] = layer.Neurons[n].Bias;
-
-                    neuronIndex++;
+                    serialNeurons[neuronIndex] = new SerialNeuron(
+                        (float[])layer.Neurons[n].Weights.Clone(),
+                        layer.Neurons[n].Bias);
                 }
             }
 
-            return new SerialPerceptron(_layerParams, weights, biases, _weightInitializationType);
+            return new SerialPerceptron(_layerParams, serialNeurons, WeightInitialisationType.Manual);
         }
 
         public override string ToString()

@@ -1,16 +1,20 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using GoodHub.Core.Runtime;
 using GoodHub.Core.Runtime.Observables;
+using NeuralNet;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 {
     [SerializeField] private TrainingParameters _parameters;
+    [SerializeField] private ScriptablePerceptron _outputPerceptron;
     [SerializeField] private GameObject _carAgentPrefab;
     [SerializeField] private int _maxGenerations = 9999;
     [SerializeField] private int _stagnantGenerationThreshold = 50;
@@ -28,7 +32,8 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     public ObservableBool OnlyShowBestAgents = false;
 
-    private Dictionary<ITrainingEnvironment, List<Vector2>> _fitnessData = new Dictionary<ITrainingEnvironment, List<Vector2>>();
+    private Dictionary<ITrainingEnvironment, List<Vector2>> _fitnessData =
+        new Dictionary<ITrainingEnvironment, List<Vector2>>();
 
     private List<AgentEntity<CarAgent>> _lastGenerationStandings = new List<AgentEntity<CarAgent>>();
 
@@ -68,12 +73,13 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
     private void SpawnCarAgents()
     {
         _activeTrainingEnvironment = TrackManager.Singleton.CurrentTrack;
-        Transform startTransform = ((TrackCircuit) _activeTrainingEnvironment).StartTransform;
+        Transform startTransform = ((TrackCircuit)_activeTrainingEnvironment).StartTransform;
 
         int depthIndex = 1;
         foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
         {
-            CarAgent carAgent = Instantiate(_carAgentPrefab, startTransform.position, Quaternion.identity, transform).GetComponent<CarAgent>();
+            CarAgent carAgent = Instantiate(_carAgentPrefab, startTransform.position, Quaternion.identity, transform)
+                .GetComponent<CarAgent>();
             carAgent.gameObject.name = $"{_carAgentPrefab.name}_{depthIndex}";
 
             carAgent.transform.position = startTransform.position;
@@ -90,7 +96,8 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
     private async UniTask TrainingTask()
     {
-        await UniTask.WaitForFixedUpdate();
+        // Wait a couple frames to make sure everything's setup that needs to be
+        await UniTask.DelayFrame(2);
 
         while (_generationIndex < _maxGenerations)
         {
@@ -98,7 +105,7 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
             if (_fitnessData.ContainsKey(trainingEnvironment) == false)
             {
-                _fitnessData.Add(trainingEnvironment, new List<Vector2> {new Vector2(0, 0f)});
+                _fitnessData.Add(trainingEnvironment, new List<Vector2> { new Vector2(0, 0f) });
             }
 
             HashSet<AgentEntity<CarAgent>> completedTrackers = new HashSet<AgentEntity<CarAgent>>();
@@ -203,13 +210,25 @@ public class CarAgentTrainer : SceneSingleton<CarAgentTrainer>
 
             UpdateAgentsVisibility(OnlyShowBestAgents);
         }
+
+        // TRAINING FINISHED
+        // Save the best performing agent to the output and just run the best agent on repeat
+
+        AgentEntity<CarAgent> bestPerformingAgent = _lastGenerationStandings[0];
+
+        _outputPerceptron.SerialPerceptron = bestPerformingAgent.Perceptron.ExportPerceptron();
+
+#if UNITY_EDITOR
+        EditorUtility.SetDirty(_outputPerceptron);
+#endif
     }
 
     private void UpdateAgentsVisibility(bool onlyShowBestAgents)
     {
         if (onlyShowBestAgents)
         {
-            List<AgentEntity<CarAgent>> bestAgents = _lastGenerationStandings.Take(Mathf.Clamp(_parameters.PopulationCount / 10, 1, 10)).ToList();
+            List<AgentEntity<CarAgent>> bestAgents = _lastGenerationStandings
+                .Take(Mathf.Clamp(_parameters.PopulationCount / 10, 1, 10)).ToList();
 
             foreach (AgentEntity<CarAgent> agentEntity in _agentsPool.AgentEntities)
             {

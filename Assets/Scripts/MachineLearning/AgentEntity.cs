@@ -2,22 +2,22 @@
 
 public class AgentEntity<TAgentBody> where TAgentBody : IAgentBody
 {
-    private Perceptron _perceptron;
+    private MultiLayerPerceptron _perceptron;
     private TAgentBody _agentBody;
     private float _fitness;
 
-    public Perceptron Perceptron => _perceptron;
+    public MultiLayerPerceptron Perceptron => _perceptron;
 
     public TAgentBody AgentBody => _agentBody;
 
     public float Fitness => _agentBody.GetFitness();
 
-    public AgentEntity(Perceptron perceptron)
+    public AgentEntity(MultiLayerPerceptron perceptron)
     {
         _perceptron = perceptron;
     }
 
-    public void AssignBrain(Perceptron perceptron)
+    public void AssignBrain(MultiLayerPerceptron perceptron)
     {
         _perceptron = perceptron;
     }

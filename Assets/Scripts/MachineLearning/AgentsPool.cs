@@ -26,7 +26,8 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
 
         for (int i = 0; i < _parameters.PopulationCount; i++)
         {
-            Perceptron perceptron = new Perceptron(_random.Next(), _parameters.LayerParams, _parameters.WeightInitialisationType);
+            MultiLayerPerceptron perceptron = new MultiLayerPerceptron(_random.Next(), _parameters.LayerParams,
+                _parameters.WeightInitialisationType);
             AgentEntity<TAgentBody> agentTracker = new AgentEntity<TAgentBody>(perceptron);
             _agentEntities.Add(agentTracker);
         }
@@ -40,7 +41,7 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
         // Higher rank is better
         for (int rank = 0; rank < _agentEntities.Count; rank++)
         {
-            float rankNormalised = rank / (float) (_parameters.PopulationCount - 1);
+            float rankNormalised = rank / (float)(_parameters.PopulationCount - 1);
             float survivalChance = _parameters.SurvivalChanceCurve.Evaluate(rankNormalised);
             float survivalValue = _random.NextFloat(0f, 1f);
 
@@ -53,8 +54,10 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
 
     public void Repopulate(int generationIndex)
     {
-        List<AgentEntity<TAgentBody>> survivingEntities = _agentEntities.Where(entity => entity.Perceptron != null).OrderByDescending(tracker => tracker.Fitness).ToList();
-        List<AgentEntity<TAgentBody>> emptyEntities = _agentEntities.Where(entity => entity.Perceptron == null).ToList();
+        List<AgentEntity<TAgentBody>> survivingEntities = _agentEntities.Where(entity => entity.Perceptron != null)
+            .OrderByDescending(tracker => tracker.Fitness).ToList();
+        List<AgentEntity<TAgentBody>>
+            emptyEntities = _agentEntities.Where(entity => entity.Perceptron == null).ToList();
 
         for (int i = 0; i < emptyEntities.Count; i += 2)
         {
@@ -89,18 +92,20 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
                 ApplyResetMutation(genomeTwo, probability, strength);
             }
 
-            Perceptron childPerceptronOne = Perceptron.CreatePerceptron(genomeOne, _random.Next());
+            MultiLayerPerceptron childPerceptronOne = MultiLayerPerceptron.CreatePerceptron(genomeOne, _random.Next());
             entityOne.AssignBrain(childPerceptronOne);
 
             if (entityTwo != null)
             {
-                Perceptron childPerceptronTwo = Perceptron.CreatePerceptron(genomeTwo, _random.Next());
+                MultiLayerPerceptron childPerceptronTwo =
+                    MultiLayerPerceptron.CreatePerceptron(genomeTwo, _random.Next());
                 entityTwo.AssignBrain(childPerceptronTwo);
             }
         }
     }
 
-    public AgentEntity<TAgentBody> SelectParent(List<AgentEntity<TAgentBody>> sourcePool, AgentEntity<TAgentBody> filter = null)
+    public AgentEntity<TAgentBody> SelectParent(List<AgentEntity<TAgentBody>> sourcePool,
+        AgentEntity<TAgentBody> filter = null)
     {
         float fitnessSum = sourcePool.Sum(entity => entity.Fitness);
 
@@ -122,84 +127,80 @@ public class AgentsPool<TAgentBody> where TAgentBody : IAgentBody
 
     private void CrossoverGenomes(SerialPerceptron genomeOne, SerialPerceptron genomeTwo)
     {
-        // Swap the weight genes
-        for (int n = 0; n < genomeOne.Weights.Length; n++)
+        for (int n = 0; n < genomeOne.SerialNeurons.Length; n++)
         {
-            for (int w = 0; w < genomeOne.Weights[n].Length; w++)
-            {
-                float swapChance = _random.NextFloat();
+            SerialNeuron neuronOne = genomeOne.SerialNeurons[n];
+            SerialNeuron neuronTwo = genomeTwo.SerialNeurons[n];
 
-                if (swapChance <= _parameters.CrossoverRate)
+            // Swap the weight genes
+
+            for (int w = 0; w < neuronOne.Weights.Length; w++)
+            {
+                float weightSwapChance = _random.NextFloat();
+
+                if (weightSwapChance <= _parameters.CrossoverRate)
                 {
-                    (genomeOne.Weights[n][w], genomeTwo.Weights[n][w]) = (genomeTwo.Weights[n][w], genomeOne.Weights[n][w]);
+                    (neuronOne.Weights[w], neuronTwo.Weights[w]) = (neuronTwo.Weights[w], neuronOne.Weights[w]);
                 }
             }
-        }
 
-        // Swap the bias genes
-        for (int b = 0; b < genomeOne.Biases.Length; b++)
-        {
-            float swapChance = _random.NextFloat();
+            // Swap the bias genes
 
-            if (swapChance <= _parameters.CrossoverRate)
+            float biasSwapChance = _random.NextFloat();
+
+            if (biasSwapChance <= _parameters.CrossoverRate)
             {
-                (genomeOne.Biases[b], genomeTwo.Biases[b]) = (genomeTwo.Biases[b], genomeOne.Biases[b]);
+                (neuronOne.Bias, neuronTwo.Bias) = (neuronTwo.Bias, neuronOne.Bias);
             }
         }
     }
 
     private void ApplyOffsetMutation(SerialPerceptron genome, float probability, float strength)
     {
-        // Mutate the weight genes
-        for (int n = 0; n < genome.Weights.Length; n++)
+        for (int n = 0; n < genome.SerialNeurons.Length; n++)
         {
-            for (int w = 0; w < genome.Weights[n].Length; w++)
-            {
-                float mutateChance = _random.NextFloat();
+            SerialNeuron neuron = genome.SerialNeurons[n];
 
-                if (mutateChance <= probability)
+            for (int w = 0; w < neuron.Weights.Length; w++)
+            {
+                float weightMutateChance = _random.NextFloat();
+
+                if (weightMutateChance <= probability)
                 {
-                    genome.Weights[n][w] += _random.NormalDistribution(0f, strength);
+                    neuron.Weights[w] += _random.NormalDistribution(0f, strength);
                 }
             }
-        }
 
-        // Mutate the bias genes
-        for (int b = 0; b < genome.Biases.Length; b++)
-        {
-            float mutateChance = _random.NextFloat();
+            float biasMutateChance = _random.NextFloat();
 
-            if (mutateChance <= probability)
+            if (biasMutateChance <= probability)
             {
-                genome.Biases[b] += _random.NormalDistribution(0f, strength);
+                neuron.Bias += _random.NormalDistribution(0f, strength);
             }
         }
     }
 
     private void ApplyResetMutation(SerialPerceptron genome, float probability, float strength)
     {
-        // Mutate the weight genes
-        for (int n = 0; n < genome.Weights.Length; n++)
+        for (int n = 0; n < genome.SerialNeurons.Length; n++)
         {
-            for (int w = 0; w < genome.Weights[n].Length; w++)
-            {
-                float mutateChance = _random.NextFloat();
+            SerialNeuron neuron = genome.SerialNeurons[n];
 
-                if (mutateChance <= probability)
+            for (int w = 0; w < neuron.Weights.Length; w++)
+            {
+                float weightMutateChance = _random.NextFloat();
+
+                if (weightMutateChance <= probability)
                 {
-                    genome.Weights[n][w] = _random.NextFloat(-strength, strength);
+                    neuron.Weights[w] = _random.NextFloat(-strength, strength);
                 }
             }
-        }
 
-        // Mutate the bias genes
-        for (int b = 0; b < genome.Biases.Length; b++)
-        {
-            float mutateChance = _random.NextFloat();
+            float biasMutateChance = _random.NextFloat();
 
-            if (mutateChance <= probability)
+            if (biasMutateChance <= probability)
             {
-                genome.Biases[b] = _random.NextFloat(-strength, strength);
+                neuron.Bias = _random.NextFloat(-strength, strength);
             }
         }
     }

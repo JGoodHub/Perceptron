@@ -7,12 +7,13 @@ namespace NeuralNet
     public enum WeightInitialisationType
     {
         None,
+        Manual,
         XavierInitialisation,
         HeInitialization,
         //LeCunInitialisation
     }
 
-    public class WeightInitialisations
+    public static class WeightInitialisations
     {
         public static float[] XavierInitialisation(Random random, int fanInCount, int fanOutCount)
         {
@@ -34,7 +35,7 @@ namespace NeuralNet
 
         // public static float[] LeCunInitialisation(Random random, int fanInCount)
         // {
-        //     float[] weights = random.NormalDistribution(0, 1f / fanInCount, fanInCount);
+        //     float[] weights = random.NormalDistributions(0, 1f / fanInCount, fanInCount);
         //     return weights;
         // }
     }

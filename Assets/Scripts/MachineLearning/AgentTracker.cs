@@ -2,10 +2,10 @@ using NeuralNet;
 
 public class AgentTracker
 {
-    public Perceptron perceptron;
+    public MultiLayerPerceptron perceptron;
     public float fitness;
 
-    public AgentTracker(Perceptron perceptron)
+    public AgentTracker(MultiLayerPerceptron perceptron)
     {
         this.perceptron = perceptron;
     }

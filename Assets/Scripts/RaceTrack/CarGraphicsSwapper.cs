@@ -38,7 +38,7 @@ public class CarGraphicsSwapper : MonoBehaviour
 
     [SerializeField] private ColourSettings[] _colourSettings;
 
-    private List<Vector3> _positionHistory;
+    private List<Vector3> _positionHistory = new List<Vector3>();
 
     public void SetDepth(int depth)
     {

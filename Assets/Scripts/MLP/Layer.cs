@@ -36,7 +36,8 @@ namespace NeuralNet
             {
                 float[] weights = weightInitializationType switch
                 {
-                    WeightInitialisationType.None => new float[0],
+                    WeightInitialisationType.None => Array.Empty<float>(),
+                    WeightInitialisationType.Manual => Array.Empty<float>(),
                     WeightInitialisationType.XavierInitialisation =>
                         WeightInitialisations.XavierInitialisation(random, fanInCount, fanOutCount),
                     WeightInitialisationType.HeInitialization =>

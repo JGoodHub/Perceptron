@@ -1,9 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using NeuralNet;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class CarAgent : MonoBehaviour, IAgentBody
 {

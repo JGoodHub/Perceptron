@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: effa1ae58d327486dbe19f79fe5686b5, type: 3}
   m_Name: PerceptronWindowConfig
   m_EditorClassIdentifier: 
-  _name: Fitness Graph
-  _windowPrefab: {fileID: 962823487535947011, guid: 178bd90fc56b4465499bbf43a2dfa22e, type: 3}
-  _iconPrefab: {fileID: 5238266657529679600, guid: e431012b46594486b80b459ff874eb8b, type: 3}
+  _name: Neuron Net Viewer
+  _windowPrefab: {fileID: 962823487535947011, guid: 08f74c780488f2c4798893a5c0e25e75, type: 3}
+  _iconPrefab: {fileID: 5238266657529679600, guid: 7e1e0b0bedd9be4448faac2241f4fae4, type: 3}

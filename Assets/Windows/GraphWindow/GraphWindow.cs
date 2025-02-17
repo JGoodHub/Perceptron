@@ -16,10 +16,8 @@ public class GraphWindow : Window
     [SerializeField] private Toggle _yieldEveryAgentToggle;
     [SerializeField] private Toggle _onlyShowBestAgentsToggle;
 
-    public override void Initialise(WindowsManager windowsManager, WindowConfiguration windowConfig, WindowIcon windowIcon)
+    protected override void OnInitialised()
     {
-        base.Initialise(windowsManager, windowConfig, windowIcon);
-
         _graph.Initialise("Fitness Graph", "Generation", 20, "Fitness", 20);
 
         _yieldEveryFrameToggle.onValueChanged.AddListener(EveryFrameToggleChanged);

@@ -4214,7 +4214,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1855126518}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8267f58afab141828fdea9eb6924af7c, type: 3}
   m_Name: 
@@ -4294,9 +4294,9 @@ MonoBehaviour:
         Strength: 0.5
   _outputPerceptron: {fileID: 11400000, guid: fbf33b4fc416b43469384a2b364d9ef3, type: 2}
   _carAgentPrefab: {fileID: 331614762967316086, guid: f8d0369918639a142bc3167385d3025e, type: 3}
-  _maxGenerations: 1000
+  _maxGenerations: 10
   _stagnantGenerationThreshold: 1000
-  YieldEveryFrame: 1
+  YieldEveryFrame: 0
   YieldEveryAgent: 1
   OnlyShowBestAgents:
     _value: 0
